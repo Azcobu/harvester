@@ -1,0 +1,38 @@
+body {
+		color: rgb(200, 200, 200);
+		background: rgb(16, 16, 16);
+        /*margin: 2%;
+        padding: 5px;*/
+	    /* line-height: 1.5;
+	    font-size: 14; */
+	    font-family: Georgia;
+}
+
+.post {
+		background: black; 
+		/*border: solid; 
+		border-width: 2px; */
+		padding: 10px; 
+		border-radius: 8px;
+		border-color: rgb(0, 0, 64); 
+	
+}
+
+hr.new {
+  border: 2px rgb(0, 0, 64);
+  border-radius: 5px;
+}
+
+body::-webkit-scrollbar {
+							width: 16px;   /* width of the entire scrollbar */
+}
+						
+body::-webkit-scrollbar-track {
+								background: cornflowerblue; /* color of the tracking area */ 
+}
+							  
+body::-webkit-scrollbar-thumb {
+								background-color: blue; /* color of the scroll thumb */ 
+								border-radius: 4px;  /* roundness of the scroll thumb */ 
+}
+							  		  
