@@ -14,7 +14,7 @@ from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence
 from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
                              QTreeWidgetItem, QMenu, QAction, QDialog, QProgressBar,
                              QLineEdit, QLabel, QMessageBox, QInputDialog, QWidget,
-                             QToolBar, QHBoxLayout, QShortcut, QCheckBox)
+                             QToolBar, QHBoxLayout, QShortcut, QCheckBox, QFileDialog)
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from harvester import Ui_MainWindow
 from harvsearch import Ui_frmSearch
@@ -201,19 +201,14 @@ class ReaderUI(QMainWindow):
         settings.setValue("windowState", self.saveState())
         settings.setValue("splitterSizes", self.ui.splitter.saveState())
         settings.setValue("db_location", self.dbfile)
-        
-    def locate_db(self):
-        if self.dbfile == '':
-            print('No local DB found, requesting location.')
-            dlg = QFileDialog()
-            dlg.setFileMode(QFileDialog.AnyFile)
-            dlg.setFilter("Database files (*.db)")
-            filenames = QStringList()
 
-            if dlg.exec_():
-                filenames = dlg.selectedFiles()
-                # valid DB here
-                self.dbfile = filenames[0]
+    def locate_db(self):
+        if not self.dbfile:
+            print('No local DB found, requesting location.')
+            dlg = QFileDialog.getOpenFileName(self, "Open Database", "", "DB Files (*.db)")
+            if dlg:
+                # QQQQ validate DB here
+                self.dbfile = dlg[0]
 
     def closeEvent(self, event):
         self.save_state()
