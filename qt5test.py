@@ -5,7 +5,7 @@
 # create dict for last read post date - also needs to fill in for feeds with no posts read
 
 import sys
-from subprocess import Popen, CREATE_NEW_CONSOLE
+from subprocess import Popen #, CREATE_NEW_CONSOLE
 from os import listdir
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, QThread, pyqtSignal,
@@ -40,7 +40,7 @@ class CustomWebEnginePage(QWebEnginePage):
 
 class ReaderUI(QMainWindow):
     version_str = 'Harvester 0.1'
-    dbfile = 'd:\\tmp\\posts.db'
+    dbfile = ''
     node_name, node_id = '', ''
     web_zoom = 1.25
     srchtext = ''
@@ -57,7 +57,6 @@ class ReaderUI(QMainWindow):
         self.ui.webEngine = QWebEngineView()
         self.ui.webEngine.setPage(CustomWebEnginePage(self))
         self.ui.splitter.addWidget(self.ui.webEngine)
-        self.db_curs, self.db_conn = sqlitelib.connect_DB(self.dbfile)
 
         self.ui.buttonNextPage = QPushButton('>>')
         self.ui.labelPage = QLabel()
@@ -77,6 +76,8 @@ class ReaderUI(QMainWindow):
 
     def initializeUI(self):
         self.load_previous_state()
+        self.locate_db()
+        self.db_curs, self.db_conn = sqlitelib.connect_DB(self.dbfile)
         self.load_feed_data()
         self.setup_tree()
 
@@ -190,6 +191,7 @@ class ReaderUI(QMainWindow):
             self.restoreGeometry(settings.value('geometry'))
             self.restoreState(settings.value("windowState"))
             self.ui.splitter.restoreState(settings.value("splitterSizes"))
+            self.dbfile = settings.value('db_location')
 
     def save_state(self):
         # here's where we save program size and position on exit
@@ -198,6 +200,20 @@ class ReaderUI(QMainWindow):
         settings.setValue("geometry", self.saveGeometry())
         settings.setValue("windowState", self.saveState())
         settings.setValue("splitterSizes", self.ui.splitter.saveState())
+        settings.setValue("db_location", self.dbfile)
+        
+    def locate_db(self):
+        if self.dbfile == '':
+            print('No local DB found, requesting location.')
+            dlg = QFileDialog()
+            dlg.setFileMode(QFileDialog.AnyFile)
+            dlg.setFilter("Database files (*.db)")
+            filenames = QStringList()
+
+            if dlg.exec_():
+                filenames = dlg.selectedFiles()
+                # valid DB here
+                self.dbfile = filenames[0]
 
     def closeEvent(self, event):
         self.save_state()
