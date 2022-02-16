@@ -86,6 +86,7 @@
     <addaction name="actionImport_Feeds"/>
     <addaction name="actionExport_Feeds"/>
     <addaction name="separator"/>
+    <addaction name="actionLoad_Database"/>
     <addaction name="actionDatabase_Maintenance"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
@@ -105,11 +106,7 @@
     <property name="title">
      <string>View</string>
     </property>
-   </widget>
-   <widget class="QMenu" name="menuBrowse">
-    <property name="title">
-     <string>Browse</string>
-    </property>
+    <addaction name="actionMost_Recent"/>
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
@@ -130,7 +127,6 @@
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
    <addaction name="menuView"/>
-   <addaction name="menuBrowse"/>
    <addaction name="menuTools"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -278,6 +274,16 @@
   <action name="actionUpdate_Reddit">
    <property name="text">
     <string>Update Reddit</string>
+   </property>
+  </action>
+  <action name="actionLoad_Database">
+   <property name="text">
+    <string>Load Database</string>
+   </property>
+  </action>
+  <action name="actionMost_Recent">
+   <property name="text">
+    <string>Most Recent</string>
    </property>
   </action>
  </widget>

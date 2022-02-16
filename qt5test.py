@@ -107,14 +107,23 @@ class ReaderUI(QMainWindow):
         # search box
         self.ui.lineSearch.textChanged.connect(self.search_feed_names)
 
-        #menu items
+        # menu items
+        # File
         self.ui.actionSubscribe.triggered.connect(self.new_sub)
-        self.ui.actionExit.triggered.connect(self.exit_app)
-        self.ui.actionUpdate_All_Feeds.triggered.connect(self.update_all_feeds)
+        self.ui.actionLoad_Database.triggered.connect(self.load_db)
         self.ui.actionDatabase_Maintenance.triggered.connect(self.maintain_DB)
+        self.ui.actionExit.triggered.connect(self.exit_app)
+
+        # Edit
+        self.ui.actionFind_in_Page.triggered.connect(self.find_in_page)
+
+        # View
+        self.ui.actionMost_Recent.triggered.connect(self.view_most_recent)
+
+        # Tools
+        self.ui.actionUpdate_All_Feeds.triggered.connect(self.update_all_feeds)
         self.ui.actionSearch_Feeds.triggered.connect(self.search_feeds)
         self.ui.actionMark_Older_As_Read.triggered.connect(self.mark_older)
-        self.ui.actionFind_in_Page.triggered.connect(self.find_in_page)
         self.ui.actionUpdate_Reddit.triggered.connect(self.update_reddit)
 
         #setup status bar
@@ -131,7 +140,7 @@ class ReaderUI(QMainWindow):
         self.folder_icon = QIcon(r'k:\Dropbox\Python\icons-rss\icons8-folder-100.png')
         self.update_icon = QIcon(r'k:\Dropbox\Python\icons-rss\icons8-right-arrow-100.png')
 
-        self.generate_starting_page()
+        self.view_most_recent(100)
         self.ui.webEngine.loadFinished.connect(self.set_web_zoom)
         self.ui.webEngine.setZoomFactor(self.web_zoom)
 
@@ -205,10 +214,19 @@ class ReaderUI(QMainWindow):
     def locate_db(self):
         if not self.dbfile:
             print('No local DB found, requesting location.')
-            dlg = QFileDialog.getOpenFileName(self, "Open Database", "", "DB Files (*.db)")
+            self.load_db()
+        else:
+            print(f'Using DB file {self.dbfile}.')
+
+    def load_db(self):
+        try:
+            dlg = QFileDialog.getOpenFileName(self, "Open Database", "", \
+            "DB Files (*.db);;All files (*.*)")
             if dlg:
                 # QQQQ validate DB here
                 self.dbfile = dlg[0]
+        except Exception as err:
+            print(f'{err}')
 
     def closeEvent(self, event):
         self.save_state()
@@ -335,8 +353,9 @@ class ReaderUI(QMainWindow):
         if item.text(1) != 'folder':
             self.ui.statusbar.showMessage(f'{item.text(0)} - {item.text(1)}')
 
-    def generate_starting_page(self):
-        startposts = sqlitelib.get_most_recent(25)[1:] #trim first, Wertzone promo post
+    def view_most_recent(self, num=100):
+        print(f'Showing {num} most recent posts.')
+        startposts = sqlitelib.get_most_recent(num)[1:] #trim first, Wertzone promo post
         posthtml = self.generate_posts_page(startposts)
         self.ui.webEngine.setHtml(posthtml)
 
