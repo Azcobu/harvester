@@ -118,7 +118,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionFind_in_Page.triggered.connect(self.find_in_page)
 
         # View
-        self.ui.actionMost_Recent.triggered.connect(self.view_most_recent)
+        self.ui.actionMost_Recent.triggered.connect(lambda: self.view_most_recent(100))
 
         # Tools
         self.ui.actionUpdate_All_Feeds.triggered.connect(self.update_all_feeds)
@@ -140,7 +140,7 @@ class ReaderUI(QMainWindow):
         self.folder_icon = QIcon(r'k:\Dropbox\Python\icons-rss\icons8-folder-100.png')
         self.update_icon = QIcon(r'k:\Dropbox\Python\icons-rss\icons8-right-arrow-100.png')
 
-        self.view_most_recent(100)
+        self.view_most_recent()
         self.ui.webEngine.loadFinished.connect(self.set_web_zoom)
         self.ui.webEngine.setZoomFactor(self.web_zoom)
 
@@ -420,6 +420,7 @@ class ReaderUI(QMainWindow):
         print(f'Updating {self.node_name} id {self.node_id}')
 
     def search_feeds(self):
+        #cmbSearchTime
         srchdialog = SrchDialog(self)
         srchdialog.exec()
         print(f'searching for {self.srchtext}')

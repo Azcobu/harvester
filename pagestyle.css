@@ -24,15 +24,15 @@ hr.new {
 }
 
 body::-webkit-scrollbar {
-							width: 16px;   /* width of the entire scrollbar */
+							width: 15px;   /* width of the entire scrollbar */
 }
 						
 body::-webkit-scrollbar-track {
-								background: cornflowerblue; /* color of the tracking area */ 
+								background: rgb(29, 32, 35); /* color of the tracking area */ 
 }
 							  
 body::-webkit-scrollbar-thumb {
-								background-color: blue; /* color of the scroll thumb */ 
-								border-radius: 4px;  /* roundness of the scroll thumb */ 
+								background-color: rgb(61, 174, 233); /* color of the scroll thumb */ 
+								border-radius: 2px;  /* roundness of the scroll thumb */ 
 }
 							  		  

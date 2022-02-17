@@ -21,6 +21,8 @@ class Ui_MainWindow(object):
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
+        self.gridLayout.setContentsMargins(4, 4, 4, 4)
+        self.gridLayout.setHorizontalSpacing(7)
         self.gridLayout.setObjectName("gridLayout")
         self.splitter = QtWidgets.QSplitter(self.centralwidget)
         self.splitter.setOrientation(QtCore.Qt.Horizontal)
