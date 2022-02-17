@@ -30,6 +30,10 @@ body::-webkit-scrollbar {
 body::-webkit-scrollbar-track {
 								background: rgb(29, 32, 35); /* color of the tracking area */ 
 }
+
+body::-webkit-scrollbar-track:hover {
+								background: rgb(29, 32, 35); /* color of the tracking area */ 
+}
 							  
 body::-webkit-scrollbar-thumb {
 								background-color: rgb(61, 174, 233); /* color of the scroll thumb */ 

@@ -5,8 +5,8 @@
 # create dict for last read post date - also needs to fill in for feeds with no posts read
 
 import sys
-from subprocess import Popen, CREATE_NEW_CONSOLE
-from os import listdir
+from subprocess import Popen #, CREATE_NEW_CONSOLE
+from os import listdir, path
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, QThread, pyqtSignal,
                          pyqtSlot)
@@ -50,6 +50,7 @@ class ReaderUI(QMainWindow):
     max_page = 1
     results = []
     last_read = {}
+    redd_dir = ''
 
     def __init__(self):
         super(ReaderUI, self).__init__()
@@ -78,6 +79,7 @@ class ReaderUI(QMainWindow):
     def initializeUI(self):
         self.load_previous_state()
         self.locate_db()
+        self.locate_reddit_dir()
         self.db_curs, self.db_conn = sqlitelib.connect_DB(self.dbfile)
         self.load_feed_data()
         self.setup_tree()
@@ -113,6 +115,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionSubscribe.triggered.connect(self.new_sub)
         self.ui.actionLoad_Database.triggered.connect(self.load_db)
         self.ui.actionDatabase_Maintenance.triggered.connect(self.maintain_DB)
+        self.ui.actionSelect_Reddit_Directory.triggered.connect(self.locate_reddit_dir)
         self.ui.actionExit.triggered.connect(self.exit_app)
 
         # Edit
@@ -222,7 +225,15 @@ class ReaderUI(QMainWindow):
             self.restoreState(settings.value("windowState"))
             self.ui.splitter.restoreState(settings.value("splitterSizes"))
             self.dbfile = settings.value('db_location')
-            self.web_zoom = float(settings.value('web_zoom'))
+            self.redd_dir = settings.value('redd_dir')
+            zoom = settings.value('web_zoom')
+            try:
+                if zoom:
+                    self.web_zoom = float(zoom)
+                else:
+                    self.web_zoom = 1.25
+            except:
+                self.web_zoom = 1.25
 
     def save_state(self):
         # here's where we save program size and position on exit
@@ -232,6 +243,7 @@ class ReaderUI(QMainWindow):
         settings.setValue("windowState", self.saveState())
         settings.setValue("splitterSizes", self.ui.splitter.saveState())
         settings.setValue("db_location", self.dbfile)
+        settings.setValue("redd_dir", self.redd_dir)
         settings.setValue("web_zoom", self.web_zoom)
 
     def locate_db(self):
@@ -251,6 +263,23 @@ class ReaderUI(QMainWindow):
         except Exception as err:
             self.output(f'{err}')
 
+    def locate_reddit_dir(self, skip_query=True): # QQQQ this is a mess
+        if (not self.redd_dir and self.redd_dir != 'Negative'):
+            self.output('Locating Reddit directory.')
+            if not skip_query:
+                confirm = QMessageBox.question(self, "Locate Reddit directory?",
+                          "Do you want to locate the Reddit files directory?",
+                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if skip_query or confirm == QMessageBox.Yes:
+                try:
+                    rd = str(QFileDialog.getExistingDirectory(self, "Select Reddit Directory"))
+                    if rd:
+                        self.redd_dir = rd
+                except Exception as err:
+                    self.output(f'{err}')
+            else:
+                self.redd_dir = 'Negative' # set this so it doesn't ask again
+
     def closeEvent(self, event):
         self.save_state()
         self.close()
@@ -263,7 +292,7 @@ class ReaderUI(QMainWindow):
 
     def setup_tree(self):
         # Need to evaluate unread count - worth doing every time?
-        unread_count_dict = sqlitelib.count_all_unread()
+        unread_count_dict = sqlitelib.count_all_unread(self.db_curs, self.db_conn)
 
         # QQQQ find the date/time of the newest post that has been read, for each feed
         # this is so worker threads can update tree with unread numbers
@@ -290,12 +319,13 @@ class ReaderUI(QMainWindow):
                         newnode.setIcon(0, QIcon(r'k:\Dropbox\Python\icons-rss\icons8-newspaper-100.png'))
 
         # add redd folder
-        foldernode = QTreeWidgetItem(self.ui.treeMain, ['ReddFiles', 'folder'])
-        foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
-        reddfiles = get_reddfiles()
-        for rf in reddfiles:
-            newnode = QTreeWidgetItem(foldernode, [f'{rf}', 'reddfile'])
-            newnode.setFont(0, QFont("Segoe UI", 10))
+        if self.redd_dir and self.redd_dir != 'Negative':
+            foldernode = QTreeWidgetItem(self.ui.treeMain, ['ReddFiles', 'folder'])
+            foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
+            reddfiles = listdir(self.redd_dir)
+            for rf in reddfiles:
+                newnode = QTreeWidgetItem(foldernode, [f'{rf}', 'reddfile'])
+                newnode.setFont(0, QFont("Segoe UI", 10))
 
     def generate_filtered_tree(self, srchtext):
         unread_count_dict = sqlitelib.count_all_unread()
@@ -315,11 +345,12 @@ class ReaderUI(QMainWindow):
                 #self.ui.treeMain.addTopLevelItem(newnode)
 
         # add redd folder
-        reddfiles = get_reddfiles()
-        for rf in reddfiles:
-            if srchtext in rf:
-                newnode = QTreeWidgetItem(self.ui.treeMain, [f'{rf}', 'reddfile'])
-                newnode.setFont(0, QFont("Georgia", 10))
+        if self.redd_dir and self.redd_dir != 'Negative':
+            reddfiles = listdir(self.redd_dir)
+            for rf in reddfiles:
+                if srchtext in rf:
+                    newnode = QTreeWidgetItem(self.ui.treeMain, [f'{rf}', 'reddfile'])
+                    newnode.setFont(0, QFont("Georgia", 10))
 
     def collate_feeds_last_read(self):
         # QQQQ for each feed, gets the date of the last read post
@@ -342,7 +373,7 @@ class ReaderUI(QMainWindow):
         self.handle_nextprev_buttons()
 
         if node_id == 'reddfile':
-            reddurl = r'D:\tmp\reddcrawl\\' + node_title
+            reddurl = path.join(self.redd_dir, node_title)
             self.setWindowTitle(f'{self.version_str} - {reddurl}')
             self.ui.webEngine.load(QUrl.fromLocalFile(reddurl))
         elif node_id == 'folder':
@@ -356,7 +387,7 @@ class ReaderUI(QMainWindow):
             #print(f'Tree clicked - {node_title} selected with ID {node_id}.')
             self.setWindowTitle(f'{self.version_str} - {node_title}')
             try:
-                results = sqlitelib.get_feed_posts(node_id)
+                results = sqlitelib.get_feed_posts(node_id, self.db_curs, self.db_conn)
             except Exception as err:
                 self.output(err)
             posthtml = self.generate_posts_page(results)
@@ -378,7 +409,7 @@ class ReaderUI(QMainWindow):
 
     def view_most_recent(self, num=100):
         self.output(f'Showing {num} most recent posts.')
-        startposts = sqlitelib.get_most_recent(num)[1:] #trim first, Wertzone promo post
+        startposts = sqlitelib.get_most_recent(num, self.db_curs, self.db_conn)[1:] #trim first, Wertzone promo post
         posthtml = self.generate_posts_page(startposts)
         self.ui.webEngine.setHtml(posthtml)
 
@@ -684,11 +715,6 @@ def is_internet_on():
         return True
     except urllib.error.URLError as err: pass
     return False
-
-def get_reddfiles():
-    # will eventually be deprecated as Redd files should go in DB
-    reddfolder = r'd:\tmp\reddcrawl'
-    return listdir(reddfolder)
 
 def convert_isodate_to_fulldate(isodate):
     formatstr = '%A, %d %B %Y %I:%M:%S %p'

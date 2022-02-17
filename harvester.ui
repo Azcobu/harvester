@@ -104,6 +104,8 @@
     <addaction name="actionLoad_Database"/>
     <addaction name="actionDatabase_Maintenance"/>
     <addaction name="separator"/>
+    <addaction name="actionSelect_Reddit_Directory"/>
+    <addaction name="separator"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
@@ -313,6 +315,11 @@
   <action name="actionDecrease_Text_Size">
    <property name="text">
     <string>Decrease Text Size</string>
+   </property>
+  </action>
+  <action name="actionSelect_Reddit_Directory">
+   <property name="text">
+    <string>Select Reddit Directory</string>
    </property>
   </action>
  </widget>

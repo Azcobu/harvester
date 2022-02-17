@@ -27,7 +27,8 @@ def connect_DB(db_file):
     try:
         conn = sqlite3.connect(db_file)
     except Exception as err:
-        print(err)
+        print(f'Error connecting to DB file {db_file}: {err}')
+        return None
     curs = conn.cursor()
     return curs, conn
 
@@ -169,8 +170,6 @@ def write_feed_list(db_file, feedlist, curs=None, conn=None):
     conn.commit()
 
 def get_feed_posts(feed_id, curs=None, conn=None):
-    if not curs:
-        curs, conn = connect_DB('d:\\tmp\\posts.db')
 
     try:
         query = f'SELECT * FROM `posts` WHERE `feed_id` = "{feed_id}" ORDER BY `date` DESC;'
@@ -181,8 +180,6 @@ def get_feed_posts(feed_id, curs=None, conn=None):
         print(f'Error retrieving posts for {feed_id} - {err}')
 
 def get_folder_posts(folder, curs=None, conn=None):
-    if not curs:
-        curs, conn = connect_DB('d:\\tmp\\posts.db')
 
     try:
         query = f'SELECT * FROM `posts` WHERE `folder` = "{folder}" ORDER BY `date` DESC;'
@@ -193,8 +190,6 @@ def get_folder_posts(folder, curs=None, conn=None):
         print(f'Error retrieving posts for {feed_id} - {err}')
 
 def count_all_unread(curs=None, conn=None):
-    if not curs:
-        curs, conn = connect_DB('d:\\tmp\\posts.db')
 
     try:
         query = ("SELECT p.feed_id, COUNT(*) FROM `posts` p WHERE p.flags = 'None' GROUP BY p.feed_id;")
@@ -205,8 +200,6 @@ def count_all_unread(curs=None, conn=None):
         print(f'Error counting unread posts for feeds - {err}')
 
 def get_most_recent(numposts, curs=None, conn=None):
-    if not curs:
-        curs, conn = connect_DB('d:\\tmp\\posts.db')
 
     try:
         query = (f"SELECT * FROM `posts` p ORDER BY p.date DESC LIMIT {numposts};")
@@ -222,8 +215,6 @@ def vacuum(conn):
     print('DB maintenance complete.')
 
 def mark_old_as_read(numdays, curs=None, conn=None):
-    if not curs:
-        curs, conn = connect_DB('d:\\tmp\\posts.db')
 
     query = f'UPDATE `posts` SET `flags` = 1 WHERE `date` < date("now", "-{numdays} day")'
     #query = "SELECT * FROM `posts` WHERE `date` < date('now', '-365 day');"
@@ -267,8 +258,6 @@ def convert_results_to_postlist(results):
 
 def retrieve_feedlist(curs=None, conn=None):
     feedlist = []
-    if not curs:
-        curs, conn = connect_DB('d:\\tmp\\posts.db')
 
     curs.execute('SELECT * FROM "feeds"')
     for f in curs.fetchall():
