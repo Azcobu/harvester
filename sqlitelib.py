@@ -6,6 +6,7 @@
 
 import sqlite3
 import rsslib
+from datetime import datetime, timezone, date, timedelta
 
 sevtext = 'What struck me on the beach—and it struck me indeed, so that I staggered as at a blow—was that if the Eternal Principle had rested in that curved thorn I had carried about my neck across so many leagues, and if it now rested in the new thorn (perhaps the same thorn) I had only now put there, then it might rest in anything, and in fact probably did rest in everything, in every thorn on every bush, in every drop of water in the sea. The thorn was a sacred Claw because all thorns were sacred Claws; the sand in my boots was sacred sand because it came from a beach of sacred sand. The cenobites treasured up the relics of the sannyasins because the sannyasins had approached the Pancreator. But everything had approached and even touched the Pancreator, because everything had dropped from his hand. Everything was a relic. All the world was a relic. I drew off my boots, that had traveled with me so far, and threw them into the waves that I might not walk shod on holy ground.'
 '''
@@ -67,13 +68,26 @@ def create_DB():
     conn.commit()
     conn.close()
 
+def calc_limit_date(instr):
+    timediffs = {'day':1, 'week':7, 'month':31, 'year':365}
+    for k, v in timediffs.items():
+        if k in instr:
+            #return (date.today() - timedelta(days=v)).isoformat()
+            return v
+    else:
+        return 999999
+
 def text_search(srchtext, limit=None, curs=None, conn=None, datelimit=None):
     # search scores?
     # search for multiple terms?
 
+    datelimit = calc_limit_date(datelimit)
+    #  `date` < date("now", "-{numdays} day")'
+
     try:
         curs.execute(f'SELECT * FROM posts WHERE `content` LIKE "%{srchtext}%" '
-                      f'ORDER BY `date` DESC LIMIT {limit}')
+                     f'AND `date` >= date("now", "-{datelimit} day") '
+                     f'ORDER BY `date` DESC LIMIT {limit}')
     except Exception as err:
         print(f'Error: {err}')
     else:
@@ -287,7 +301,7 @@ def main():
     #lrd = find_date_last_read(feed_id, curs, conn)
     #k = find_date_all_feeds_last_read(curs, conn)
     #print(k)
-    pass
+    print(calc_limit_date('last year'))
 
 if __name__ == '__main__':
     main()

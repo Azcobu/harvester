@@ -5,7 +5,7 @@
 # create dict for last read post date - also needs to fill in for feeds with no posts read
 
 import sys
-from subprocess import Popen #, CREATE_NEW_CONSOLE
+from subprocess import Popen, CREATE_NEW_CONSOLE
 from os import listdir
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, QThread, pyqtSignal,
@@ -40,6 +40,7 @@ class CustomWebEnginePage(QWebEnginePage):
 
 class ReaderUI(QMainWindow):
     version_str = 'Harvester 0.1'
+    console_output = True
     dbfile = ''
     node_name, node_id = '', ''
     web_zoom = 1.25
@@ -119,6 +120,8 @@ class ReaderUI(QMainWindow):
 
         # View
         self.ui.actionMost_Recent.triggered.connect(lambda: self.view_most_recent(100))
+        self.ui.actionIncrease_Text_Size.triggered.connect(self.increase_text_size)
+        self.ui.actionDecrease_Text_Size.triggered.connect(self.decrease_text_size)
 
         # Tools
         self.ui.actionUpdate_All_Feeds.triggered.connect(self.update_all_feeds)
@@ -150,6 +153,11 @@ class ReaderUI(QMainWindow):
     def link_hover(self, url):
         self.ui.statusbar.showMessage(f'{url}')
 
+    def output(self, instr):
+        # centralises all output so it can be disabled or logged as needed
+        if self.console_output:
+            print(instr)
+
     def tree_context_menu(self, position):
         # should differentiate between feeds and folders and show options accordingly
         index = self.ui.treeMain.indexAt(position)
@@ -159,7 +167,7 @@ class ReaderUI(QMainWindow):
         item = self.ui.treeMain.itemAt(position)
         self.node_name = item.text(0)  # The text of the node.
         self.node_id = item.text(1)
-        print(f'Clicked on {self.node_name}')
+        self.output(f'Clicked on {self.node_name}')
 
         menu = QMenu()
         action1 = menu.addAction(self.newSubAction)
@@ -178,21 +186,34 @@ class ReaderUI(QMainWindow):
 
     def search_feed_names(self):
         srchtext = self.ui.lineSearch.text()
-        print(f'Searching for {srchtext}')
+        self.output(f'Searching for {srchtext}')
         if srchtext == '':
             self.setup_tree()
         else:
-            if len(srchtext) == 1: #ignore single letter
+            if len(srchtext) < 3: #ignore 1, 2 letters
                 pass
             else:
                 try:
                     self.generate_filtered_tree(srchtext)
                 except Exception as err:
-                    print(f'{err}')
+                    self.output(f'{err}')
 
     def set_web_zoom(self):
+        if not (isinstance(self.web_zoom, float) or isinstance(self.web_zoom, int)):
+            self.output('Error retrieving previous zoom level - value was ' +
+                       f'{self.web_zoom}. Setting to default of 125%.')
+            self.web_zoom = 1.25
         self.ui.webEngine.setZoomFactor(self.web_zoom)
-        pass
+
+    def increase_text_size(self):
+        self.web_zoom += 0.05
+        self.set_web_zoom()
+        self.ui.statusbar.showMessage(f'Screen zoom increased to {round(self.web_zoom*100)}%')
+
+    def decrease_text_size(self):
+        self.web_zoom -= 0.05
+        self.set_web_zoom()
+        self.ui.statusbar.showMessage(f'Screen zoom decreased to {round(self.web_zoom*100)}%')
 
     def load_previous_state(self):
         settings = QSettings('Hypogeum', 'Harvester')
@@ -201,6 +222,7 @@ class ReaderUI(QMainWindow):
             self.restoreState(settings.value("windowState"))
             self.ui.splitter.restoreState(settings.value("splitterSizes"))
             self.dbfile = settings.value('db_location')
+            self.web_zoom = float(settings.value('web_zoom'))
 
     def save_state(self):
         # here's where we save program size and position on exit
@@ -210,13 +232,14 @@ class ReaderUI(QMainWindow):
         settings.setValue("windowState", self.saveState())
         settings.setValue("splitterSizes", self.ui.splitter.saveState())
         settings.setValue("db_location", self.dbfile)
+        settings.setValue("web_zoom", self.web_zoom)
 
     def locate_db(self):
         if not self.dbfile:
-            print('No local DB found, requesting location.')
+            self.output('No local DB found, requesting location.')
             self.load_db()
         else:
-            print(f'Using DB file {self.dbfile}.')
+            self.output(f'Using DB file {self.dbfile}.')
 
     def load_db(self):
         try:
@@ -226,7 +249,7 @@ class ReaderUI(QMainWindow):
                 # QQQQ validate DB here
                 self.dbfile = dlg[0]
         except Exception as err:
-            print(f'{err}')
+            self.output(f'{err}')
 
     def closeEvent(self, event):
         self.save_state()
@@ -279,7 +302,7 @@ class ReaderUI(QMainWindow):
 
         self.ui.treeMain.clear()
         srchtext = srchtext.lower()
-        print(f'Searching for feeds with {srchtext} in name...')
+        self.output(f'Searching for feeds with {srchtext} in name...')
 
         for feed in self.feedlist:
             if srchtext in feed.title.lower():
@@ -306,7 +329,7 @@ class ReaderUI(QMainWindow):
                 f.last_read = last_read[f.feed_id]
 
     def exit_app(self):
-        print('Exiting app...')
+        self.output('Exiting app...')
         self.close()
 
     def tree_click(self):
@@ -335,7 +358,7 @@ class ReaderUI(QMainWindow):
             try:
                 results = sqlitelib.get_feed_posts(node_id)
             except Exception as err:
-                print(err)
+                self.output(err)
             posthtml = self.generate_posts_page(results)
             self.ui.webEngine.setHtml(posthtml)
             # mark as read - change font, remove unread conunt, and update DB
@@ -347,14 +370,14 @@ class ReaderUI(QMainWindow):
                 try:
                     sqlitelib.mark_feed_read(node_id, self.db_curs, self.db_conn)
                 except Exception as err:
-                    print(f'Error - failed to update read status of {node_title}: {err}')
+                    self.output(f'Error - failed to update read status of {node_title}: {err}')
 
     def tree_hover(self, item):
         if item.text(1) != 'folder':
             self.ui.statusbar.showMessage(f'{item.text(0)} - {item.text(1)}')
 
     def view_most_recent(self, num=100):
-        print(f'Showing {num} most recent posts.')
+        self.output(f'Showing {num} most recent posts.')
         startposts = sqlitelib.get_most_recent(num)[1:] #trim first, Wertzone promo post
         posthtml = self.generate_posts_page(startposts)
         self.ui.webEngine.setHtml(posthtml)
@@ -414,23 +437,23 @@ class ReaderUI(QMainWindow):
             self.ui.statusbar.showMessage(f'Adding new subscription: {newsub.title} - {newsub.rss_url}')
 
     def mark_read(self):
-        print(f'Mark feed {self.node_name} - {self.node_id} read.')
+        self.output(f'Mark feed {self.node_name} - {self.node_id} read.')
 
     def update_feed(self):
-        print(f'Updating {self.node_name} id {self.node_id}')
+        self.output(f'Updating {self.node_name} id {self.node_id}')
 
     def search_feeds(self):
-        #cmbSearchTime
         srchdialog = SrchDialog(self)
         srchdialog.exec()
-        print(f'searching for {self.srchtext}')
-        results = sqlitelib.text_search(self.srchtext, 50, self.db_curs, self.db_conn)
-        if results:
-            self.ui.statusbar.showMessage(f'{len(results)} results found.')
-            posthtml = self.generate_posts_page(results)
-            self.ui.webEngine.setHtml(posthtml)
-        else:
-            self.ui.statusbar.showMessage(f'No results found for search "{self.srchtext}"')
+        if self.srchtext:
+            self.output(f'Searching feeds DB for "{self.srchtext}" in {self.srchtime.lower()}.')
+            results = sqlitelib.text_search(self.srchtext, 50, self.db_curs, self.db_conn, self.srchtime)
+            if results:
+                self.ui.statusbar.showMessage(f'{len(results)} results found.')
+                posthtml = self.generate_posts_page(results)
+                self.ui.webEngine.setHtml(posthtml)
+            else:
+                self.ui.statusbar.showMessage(f'No results found for search "{self.srchtext}"')
 
     def update_reddit(self):
         Popen(['python', r'D:\Python\Code\redditcrawl4.py'], creationflags=CREATE_NEW_CONSOLE)
@@ -442,7 +465,7 @@ class ReaderUI(QMainWindow):
                      "This will unsubscribe you from the feed and delete all saved posts. Are you sure?",
                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if confirm == QMessageBox.Yes:
-                print(f'unsub from {self.node_id}')
+                self.output(f'unsub from {self.node_id}')
 
     def generate_posts_page(self, results=None):
         # also needs some indicator of if feed has been read
@@ -523,6 +546,7 @@ class SrchDialog(QDialog):
         super().__init__(parent)
         self.parent = parent
         self.srchtext = ''
+        self.srchtime = ''
         self.ui = Ui_frmSearch()
         self.ui.setupUi(self)
         self.ui.lineSubSearch.setFocus()
@@ -532,10 +556,19 @@ class SrchDialog(QDialog):
         self.ui.btnSearchCancel.clicked.connect(self.cancel_button)
 
     def ok_button(self):
-        self.parent.srchtext = self.ui.lineSubSearch.text()
+        srchstr = self.ui.lineSubSearch.text().strip()
+        if srchstr:
+            self.parent.srchtext = srchstr
+            self.parent.srchtime = self.ui.cmbSearchTime.currentText()
+        else:
+            self.parent.srchtext = None
+            self.parent.srchtime = None
+
         self.close()
 
     def cancel_button(self):
+        self.parent.srchtext = None
+        self.parent.srchtime = None
         self.close()
 
 # ============================================================================
@@ -665,7 +698,7 @@ def convert_isodate_to_fulldate(isodate):
         localtime = utctime.astimezone(localtz)
         return localtime.strftime(formatstr)
     except Exception as err:
-        print(f'Timezone conversion error - {err}')
+        self.output(f'Timezone conversion error - {err}')
         return isodate
 
 def load_css_file():
@@ -673,19 +706,19 @@ def load_css_file():
         with open(r'pagestyle.css', 'r') as cssfile:
             return cssfile.read()
     except Exception as err:
-        print(f'Loading CSS file failed - {err}')
+        self.output(f'Loading CSS file failed - {err}')
 
 def load_data(infile):
     try:
         with open(infile, 'r') as infile:
             indata = infile.read()
-        print('Data loaded.')
+        self.output('Data loaded.')
         return indata
     except Exception as err:
-        print(f'{err}')
+        self.output(f'{err}')
 
 def exception_hook(exctype, value, traceback):
-    print(exctype, value, traceback)
+    self.output(exctype, value, traceback)
     sys._excepthook(exctype, value, traceback)
     sys.exit(1)
 
