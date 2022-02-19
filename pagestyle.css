@@ -32,11 +32,11 @@ body::-webkit-scrollbar-track {
 }
 
 body::-webkit-scrollbar-track:hover {
-								background: rgb(29, 32, 35); /* color of the tracking area */ 
+								background: rgb(118, 121, 124);
 }
 							  
 body::-webkit-scrollbar-thumb {
 								background-color: rgb(61, 174, 233); /* color of the scroll thumb */ 
-								border-radius: 2px;  /* roundness of the scroll thumb */ 
+								border-radius: 3px;  /* roundness of the scroll thumb */ 
 }
 							  		  

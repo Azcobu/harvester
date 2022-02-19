@@ -96,11 +96,12 @@
     </property>
     <addaction name="actionSubscribe"/>
     <addaction name="separator"/>
-    <addaction name="actionNew_Folder_2"/>
+    <addaction name="actionNew_Fold"/>
     <addaction name="separator"/>
     <addaction name="actionImport_Feeds"/>
     <addaction name="actionExport_Feeds"/>
     <addaction name="separator"/>
+    <addaction name="actionCreate_Database"/>
     <addaction name="actionLoad_Database"/>
     <addaction name="actionDatabase_Maintenance"/>
     <addaction name="separator"/>
@@ -161,7 +162,7 @@
     <string>--</string>
    </property>
   </action>
-  <action name="actionNew_Folder_2">
+  <action name="actionNew_Fold">
    <property name="text">
     <string>New Folder</string>
    </property>
@@ -320,6 +321,11 @@
   <action name="actionSelect_Reddit_Directory">
    <property name="text">
     <string>Select Reddit Directory</string>
+   </property>
+  </action>
+  <action name="actionCreate_Database">
+   <property name="text">
+    <string>Create Database</string>
    </property>
   </action>
  </widget>

@@ -3,9 +3,9 @@
 #   wipe of whole directory on start
 # - add subprocess call of reddcrawler
 # create dict for last read post date - also needs to fill in for feeds with no posts read
+# fix scrollbar style when reading HTML files from disk, as it reverts to base
 
 import sys
-from subprocess import Popen #, CREATE_NEW_CONSOLE
 from os import listdir, path
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, QThread, pyqtSignal,
@@ -28,6 +28,7 @@ from datetime import datetime
 import threading
 from queue import Queue
 import urllib.request
+from subprocess import Popen
 
 class CustomWebEnginePage(QWebEnginePage):
     # Custom WebEnginePage to customize how we handle link navigation
@@ -41,7 +42,7 @@ class CustomWebEnginePage(QWebEnginePage):
 class ReaderUI(QMainWindow):
     version_str = 'Harvester 0.1'
     console_output = True
-    dbfile = ''
+    db_filename = ''
     node_name, node_id = '', ''
     web_zoom = 1.25
     srchtext = ''
@@ -80,7 +81,7 @@ class ReaderUI(QMainWindow):
         self.load_previous_state()
         self.locate_db()
         self.locate_reddit_dir()
-        self.db_curs, self.db_conn = sqlitelib.connect_DB(self.dbfile)
+        self.db_curs, self.db_conn = sqlitelib.connect_DB(self.db_filename)
         self.load_feed_data()
         self.setup_tree()
 
@@ -113,6 +114,8 @@ class ReaderUI(QMainWindow):
         # menu items
         # File
         self.ui.actionSubscribe.triggered.connect(self.new_sub)
+        self.ui.actionNew_Fold.triggered.connect(self.new_folder)
+        self.ui.actionCreate_Database.triggered.connect(self.create_db)
         self.ui.actionLoad_Database.triggered.connect(self.load_db)
         self.ui.actionDatabase_Maintenance.triggered.connect(self.maintain_DB)
         self.ui.actionSelect_Reddit_Directory.triggered.connect(self.locate_reddit_dir)
@@ -146,12 +149,9 @@ class ReaderUI(QMainWindow):
         self.folder_icon = QIcon(r'k:\Dropbox\Python\icons-rss\icons8-folder-100.png')
         self.update_icon = QIcon(r'k:\Dropbox\Python\icons-rss\icons8-right-arrow-100.png')
 
-        self.view_most_recent()
         self.ui.webEngine.loadFinished.connect(self.set_web_zoom)
         self.ui.webEngine.setZoomFactor(self.web_zoom)
-
-        #begin initial feed update
-        #self.update_all_feeds()
+        self.view_most_recent()
 
     def link_hover(self, url):
         self.ui.statusbar.showMessage(f'{url}')
@@ -189,11 +189,10 @@ class ReaderUI(QMainWindow):
 
     def search_feed_names(self):
         srchtext = self.ui.lineSearch.text()
-        self.output(f'Searching for {srchtext}')
         if srchtext == '':
             self.setup_tree()
         else:
-            if len(srchtext) < 3: #ignore 1, 2 letters
+            if len(srchtext) < 2: #ignore 1 letter
                 pass
             else:
                 try:
@@ -224,7 +223,7 @@ class ReaderUI(QMainWindow):
             self.restoreGeometry(settings.value('geometry'))
             self.restoreState(settings.value("windowState"))
             self.ui.splitter.restoreState(settings.value("splitterSizes"))
-            self.dbfile = settings.value('db_location')
+            self.db_filename = settings.value('db_location')
             self.redd_dir = settings.value('redd_dir')
             zoom = settings.value('web_zoom')
             try:
@@ -242,16 +241,16 @@ class ReaderUI(QMainWindow):
         settings.setValue("geometry", self.saveGeometry())
         settings.setValue("windowState", self.saveState())
         settings.setValue("splitterSizes", self.ui.splitter.saveState())
-        settings.setValue("db_location", self.dbfile)
+        settings.setValue("db_location", self.db_filename)
         settings.setValue("redd_dir", self.redd_dir)
         settings.setValue("web_zoom", self.web_zoom)
 
     def locate_db(self):
-        if not self.dbfile:
+        if not self.db_filename:
             self.output('No local DB found, requesting location.')
             self.load_db()
         else:
-            self.output(f'Using DB file {self.dbfile}.')
+            self.output(f'Using DB file {self.db_filename}.')
 
     def load_db(self):
         try:
@@ -259,26 +258,17 @@ class ReaderUI(QMainWindow):
             "DB Files (*.db);;All files (*.*)")
             if dlg:
                 # QQQQ validate DB here
-                self.dbfile = dlg[0]
+                self.db_filename = dlg[0]
         except Exception as err:
             self.output(f'{err}')
 
-    def locate_reddit_dir(self, skip_query=True): # QQQQ this is a mess
-        if (not self.redd_dir and self.redd_dir != 'Negative'):
+    def locate_reddit_dir(self, skip_query=True):
+        if not self.redd_dir:
             self.output('Locating Reddit directory.')
-            if not skip_query:
-                confirm = QMessageBox.question(self, "Locate Reddit directory?",
-                          "Do you want to locate the Reddit files directory?",
-                          QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if skip_query or confirm == QMessageBox.Yes:
-                try:
-                    rd = str(QFileDialog.getExistingDirectory(self, "Select Reddit Directory"))
-                    if rd:
-                        self.redd_dir = rd
-                except Exception as err:
-                    self.output(f'{err}')
-            else:
-                self.redd_dir = 'Negative' # set this so it doesn't ask again
+            rd = str(QFileDialog.getExistingDirectory(self, "Select Reddit Directory"))
+            if rd:
+                self.redd_dir = rd
+                self.setup_tree()
 
     def closeEvent(self, event):
         self.save_state()
@@ -319,7 +309,7 @@ class ReaderUI(QMainWindow):
                         newnode.setIcon(0, QIcon(r'k:\Dropbox\Python\icons-rss\icons8-newspaper-100.png'))
 
         # add redd folder
-        if self.redd_dir and self.redd_dir != 'Negative':
+        if self.redd_dir:
             foldernode = QTreeWidgetItem(self.ui.treeMain, ['ReddFiles', 'folder'])
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
             reddfiles = listdir(self.redd_dir)
@@ -328,7 +318,7 @@ class ReaderUI(QMainWindow):
                 newnode.setFont(0, QFont("Segoe UI", 10))
 
     def generate_filtered_tree(self, srchtext):
-        unread_count_dict = sqlitelib.count_all_unread()
+        unread_count_dict = sqlitelib.count_all_unread(self.db_curs, self.db_conn)
 
         self.ui.treeMain.clear()
         srchtext = srchtext.lower()
@@ -345,7 +335,7 @@ class ReaderUI(QMainWindow):
                 #self.ui.treeMain.addTopLevelItem(newnode)
 
         # add redd folder
-        if self.redd_dir and self.redd_dir != 'Negative':
+        if self.redd_dir:
             reddfiles = listdir(self.redd_dir)
             for rf in reddfiles:
                 if srchtext in rf:
@@ -363,6 +353,13 @@ class ReaderUI(QMainWindow):
         self.output('Exiting app...')
         self.close()
 
+    def create_db():
+        pass # QQQQ
+        # get new filename w/ dialog
+        if sqlitelib.create_DB(filename):
+            self.db_filename = filename
+            self.db_curs, self.db_conn = sqlitelib.connect(filename)
+
     def tree_click(self):
         #QQQQ also needs to update page controls, as max_page doesn't seem to update
         # if a new page is added
@@ -375,6 +372,7 @@ class ReaderUI(QMainWindow):
         if node_id == 'reddfile':
             reddurl = path.join(self.redd_dir, node_title)
             self.setWindowTitle(f'{self.version_str} - {reddurl}')
+            self.ui.webEngine.setZoomFactor(self.web_zoom)
             self.ui.webEngine.load(QUrl.fromLocalFile(reddurl))
         elif node_id == 'folder':
             # two options - either expand whole folder as if expand widget was clicked
@@ -455,7 +453,7 @@ class ReaderUI(QMainWindow):
                                  mainwin, flags, self.update_icon))
             t.start()
 
-        DB_thread = threading.Thread(target=rsslib.DB_writer, args=[DB_queue, numworkers, self.dbfile, mainwin])
+        DB_thread = threading.Thread(target=rsslib.DB_writer, args=[DB_queue, numworkers, self.db_filename, mainwin])
         DB_thread.start()
 
     def new_sub(self):
@@ -487,7 +485,7 @@ class ReaderUI(QMainWindow):
                 self.ui.statusbar.showMessage(f'No results found for search "{self.srchtext}"')
 
     def update_reddit(self):
-        Popen(['python', r'D:\Python\Code\redditcrawl4.py'], creationflags=CREATE_NEW_CONSOLE)
+        Popen(['python', r'D:\Python\Code\redditcrawl4.py'], shell=True)
 
     def unsubscribe_feed(self):
         #should pop up a dialog box to confirm
@@ -560,6 +558,15 @@ class ReaderUI(QMainWindow):
             self.ui.buttonNextPage.setDisabled(False)
         if self.curr_page == 1:
             self.ui.buttonPrevPage.setDisabled(True)
+
+    def new_folder(self):
+        newfolder, ok = QInputDialog.getText(self, 'New Folder Name', 'Enter folder name:')
+        if ok:
+            print(str(newfolder))
+            newfoldernode = QTreeWidgetItem(self.ui.treeMain, [newfolder, 'folder'])
+            newfoldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
+            self.folderlist.append(newfolder)
+            self.folderlist = sorted(self.folderlist)
 
     @pyqtSlot(str, QWebEnginePage.FindFlag)
     def on_searched(self, text, flag):

@@ -32,42 +32,45 @@ def connect_DB(db_file):
     curs = conn.cursor()
     return curs, conn
 
-def create_DB():
-    conn = sqlite3.connect('d:\\tmp\\posts.db')
+def create_DB(filename):
+    conn = sqlite3.connect(filename)
     c = conn.cursor()
 
-    # Create table
-    c.execute(
-    '''CREATE TABLE feeds (
-        id        text primary key,
-        title     text,
-        folder    text,
-        type      text,
-        rss_url   text,
-        html_url  text,
-        tags      text,
-        last_read text,
-        favicon   blob
-        )
-    ''')
-    # most fields are self explanatory, but flags = None/0 for unread posts, and 1 for read
-    c.execute(
-    '''CREATE TABLE posts (
-        id      text primary key,
-        feed_id text,
-        title   text,
-        author  text,
-        url     text,
-        date    text,
-        content text,
-        flags   text
-        )
-    ''')
+    try:
+        # Create table
+        c.execute(
+        '''CREATE TABLE feeds (
+            id        text primary key,
+            title     text,
+            folder    text,
+            type      text,
+            rss_url   text,
+            html_url  text,
+            tags      text,
+            last_read text,
+            favicon   blob
+            )
+        ''')
+        # most fields are self explanatory, but flags = None/0 for unread posts, and 1 for read
+        c.execute(
+        '''CREATE TABLE posts (
+            id      text primary key,
+            feed_id text,
+            title   text,
+            author  text,
+            url     text,
+            date    text,
+            content text,
+            flags   text
+            )
+        ''')
 
-    # Insert a row of data
-    #c.execute(f"INSERT INTO posts VALUES (1, 'Book of Gold', 'Ultan', '2022-06-08', '{sevtext}')")
-    conn.commit()
-    conn.close()
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as err:
+        print(f'Error creating DB {filename} - {err}')
+        return False
 
 def calc_limit_date(instr):
     timediffs = {'day':1, 'week':7, 'month':31, 'year':365}
@@ -290,7 +293,7 @@ def main():
     #lrd = find_date_last_read(feed_id, curs, conn)
     #k = find_date_all_feeds_last_read(curs, conn)
     #print(k)
-    print(calc_limit_date('last year'))
+    create_DB('d:\\tmp\\createtest.db')
 
 if __name__ == '__main__':
     main()
