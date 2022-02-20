@@ -80,9 +80,9 @@ class ReaderUI(QMainWindow):
     def initializeUI(self):
         self.load_previous_state()
         self.locate_db()
-        self.locate_reddit_dir()
         self.db_curs, self.db_conn = sqlitelib.connect_DB(self.db_filename)
         self.load_feed_data()
+        self.locate_reddit_dir()
         self.setup_tree()
 
         self.ui.treeMain.setMouseTracking(True)
