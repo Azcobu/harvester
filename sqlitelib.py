@@ -293,7 +293,7 @@ def main():
     #lrd = find_date_last_read(feed_id, curs, conn)
     #k = find_date_all_feeds_last_read(curs, conn)
     #print(k)
-    create_DB('d:\\tmp\\createtest.db')
+    create_DB('d:\\tmp\\posts.db')
 
 if __name__ == '__main__':
     main()

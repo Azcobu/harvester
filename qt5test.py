@@ -80,6 +80,7 @@ class ReaderUI(QMainWindow):
     def initializeUI(self):
         self.load_previous_state()
         self.locate_db()
+        # QQQQ needs to validate DB file and ensure it's loaded properly
         self.db_curs, self.db_conn = sqlitelib.connect_DB(self.db_filename)
         self.load_feed_data()
         self.locate_reddit_dir()
@@ -459,11 +460,15 @@ class ReaderUI(QMainWindow):
     def new_sub(self):
         # should verify url if possible, then add the feed to the DB,
         # load posts from the feed and refresh the tree. How to decide folders?
-        # will probably need a custom dialog after all.
         newsubform = NewSubDialog(self)
         if newsubform.exec():
             newsub = newsubform.get_inputs()
-            self.ui.statusbar.showMessage(f'Adding new subscription: {newsub.title} - {newsub.rss_url}')
+            self.ui.statusbar.showMessage(f'Adding new subscription: {newsub.title} - {newsub.rss_url} to folder {newsub.folder}')
+            sqlitelib.write_feed(newsub, self.db_curs, self.db_conn)
+            self.load_feed_data()
+            self.setup_tree()
+            #sqlitelib.get_feed_posts(newsub, self.db_curs, self.db_conn)
+            #QQQQ need to add to tree, refresh
 
     def mark_read(self):
         self.output(f'Mark feed {self.node_name} - {self.node_id} read.')
@@ -631,7 +636,6 @@ class NewSubDialog(QDialog):
         self.ui.btnNewSubCancel.clicked.connect(self.cancel_button)
 
         self.ui.btnNewSubOK.setDisabled(True)
-
         self.ui.lineNewSubFeedUrl.textEdited.connect(self.edit_feed_url)
 
     def check_button(self):
@@ -661,6 +665,7 @@ class NewSubDialog(QDialog):
         self.reject()
 
     def get_inputs(self):
+        self.feed.folder = self.ui.listNewSubFolders.currentItem().text()
         return self.feed
 
     def edit_feed_url(self):
