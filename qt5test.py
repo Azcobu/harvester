@@ -3,10 +3,11 @@
 #   wipe of whole directory on start
 # - add subprocess call of reddcrawler
 # create dict for last read post date - also needs to fill in for feeds with no posts read
-# fix scrollbar style when reading HTML files from disk, as it reverts to base
+# automatic download on sartup, and X minutes thereafter?
+# DB maintenance - if > 50 unread posts, start culling?
 
 import sys
-from os import listdir, path
+from os import listdir, path, getcwd
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, QThread, pyqtSignal,
                          pyqtSlot)
@@ -146,13 +147,14 @@ class ReaderUI(QMainWindow):
 
         self.ui.webEngine.page().linkHovered.connect(self.link_hover)
 
-        self.dl_icon = QIcon(r'k:\Dropbox\Python\icons-rss\icons8-download-100.png')
-        self.folder_icon = QIcon(r'k:\Dropbox\Python\icons-rss\icons8-folder-100.png')
-        self.update_icon = QIcon(r'k:\Dropbox\Python\icons-rss\icons8-right-arrow-100.png')
+        self.dl_icon = QIcon(r'd:\Dropbox\Python\icons-rss\icons8-download-100.png')
+        self.folder_icon = QIcon(r'd:\Dropbox\Python\icons-rss\icons8-folder-100.png')
+        self.update_icon = QIcon(r'd:\Dropbox\Python\icons-rss\icons8-right-arrow-100.png')
 
         self.ui.webEngine.loadFinished.connect(self.set_web_zoom)
         self.ui.webEngine.setZoomFactor(self.web_zoom)
         self.view_most_recent()
+        self.update_all_feeds()
 
     def link_hover(self, url):
         self.ui.statusbar.showMessage(f'{url}')
@@ -254,14 +256,15 @@ class ReaderUI(QMainWindow):
             self.output(f'Using DB file {self.db_filename}.')
 
     def load_db(self):
-        try:
-            dlg = QFileDialog.getOpenFileName(self, "Open Database", "", \
+        dlg = QFileDialog.getOpenFileName(self, "Open Database", "", \
             "DB Files (*.db);;All files (*.*)")
-            if dlg:
-                # QQQQ validate DB here
-                self.db_filename = dlg[0]
-        except Exception as err:
-            self.output(f'{err}')
+        if dlg:
+            # QQQQ validate DB here
+            self.db_filename = dlg[0]
+            self.output(f'Loaded DB file {dlg[0]}')
+            self.db_curs, self.db_conn = sqlitelib.connect_DB(self.db_filename)
+            self.load_feed_data()
+            self.setup_tree()
 
     def locate_reddit_dir(self, skip_query=True):
         if not self.redd_dir:
@@ -294,7 +297,7 @@ class ReaderUI(QMainWindow):
         for f in self.folderlist:
             foldernode = QTreeWidgetItem(self.ui.treeMain, [f, 'folder'])
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
-            foldernode.setIcon(0, QIcon(r'k:\Dropbox\Python\icons-rss\icons8-folder-100.png'))
+            foldernode.setIcon(0, QIcon(r'd:\Dropbox\Python\icons-rss\icons8-folder-100.png'))
             self.ui.treeMain.addTopLevelItem(foldernode)
             for feed in self.feedlist:
                 if feed.folder == f:
@@ -307,7 +310,7 @@ class ReaderUI(QMainWindow):
                     newnode.setFont(0, QFont('Segoe UI', 10, fontweight))
                     if unread_count_str: # doesn't wrk due to style sheet
                     #    newnode.setForeground(0, QtGui.QBrush(Qt.yellow))  # QtGui.QColor("blue")))
-                        newnode.setIcon(0, QIcon(r'k:\Dropbox\Python\icons-rss\icons8-newspaper-100.png'))
+                        newnode.setIcon(0, QIcon(r'd:\Dropbox\Python\icons-rss\icons8-newspaper-100.png'))
 
         # add redd folder
         if self.redd_dir:
@@ -354,12 +357,16 @@ class ReaderUI(QMainWindow):
         self.output('Exiting app...')
         self.close()
 
-    def create_db():
-        pass # QQQQ
-        # get new filename w/ dialog
-        if sqlitelib.create_DB(filename):
-            self.db_filename = filename
-            self.db_curs, self.db_conn = sqlitelib.connect(filename)
+    def create_db(self, ):
+        try:
+            dlg = QFileDialog.getSaveFileName(self, "Create New Database")
+            if dlg:
+                new_db = dlg[0]
+        except Exception as err:
+            self.output(f'{err}')
+        if sqlitelib.create_DB(new_db):
+            self.db_filename = new_db
+            self.db_curs, self.db_conn = sqlitelib.connect_DB(new_db)
 
     def tree_click(self):
         #QQQQ also needs to update page controls, as max_page doesn't seem to update
@@ -391,11 +398,12 @@ class ReaderUI(QMainWindow):
                 self.output(err)
             posthtml = self.generate_posts_page(results)
             self.ui.webEngine.setHtml(posthtml)
-            # mark as read - change font, remove unread conunt, and update DB
+            # mark as read - change font, remove icon and unread conunt, and update DB
             if '(' in node_title:
                 node_title = node_title.rpartition('(')[0].strip()
                 self.ui.treeMain.currentItem().setText(0, node_title)
                 self.ui.treeMain.currentItem().setFont(0, QFont('Segoe UI', 10))
+                self.ui.treeMain.currentItem().setIcon(0, QIcon())
                 #QQQQ - should ideally add to a thread manager
                 try:
                     sqlitelib.mark_feed_read(node_id, self.db_curs, self.db_conn)
@@ -508,9 +516,10 @@ class ReaderUI(QMainWindow):
         else:
             results = self.results
 
-        page = ['<!DOCTYPE html><html><head><style>']
-        style = load_css_file()
-        page.append(style + '</style></head><body>')
+        page = ['<!DOCTYPE html><html><head>']
+        if style := load_css_file():
+            page.append('<style>' + style + '</style>')
+        page.append('</head><body>')
 
         startpost = (self.curr_page - 1) * self.page_size
         endpost = self.curr_page * self.page_size
@@ -695,7 +704,7 @@ class SearchPanel(QWidget):
         for btn in (self.search_le, self.case_button, next_button, prev_button, done_button):
             lay.addWidget(btn)
             if isinstance(btn, QPushButton): btn.clicked.connect(self.setFocus)
-        lay.addStretch(0.1)
+        lay.addStretch(1)
         self.search_le.textChanged.connect(self.update_searching)
         self.search_le.returnPressed.connect(self.update_searching)
         self.closed.connect(self.search_le.clear)
@@ -736,27 +745,28 @@ def convert_isodate_to_fulldate(isodate):
         localtime = utctime.astimezone(localtz)
         return localtime.strftime(formatstr)
     except Exception as err:
-        self.output(f'Timezone conversion error - {err}')
+        print(f'Timezone conversion error - {err}')
         return isodate
 
 def load_css_file():
+    cssfilename = path.join(getcwd(), 'pagestyle.css')
     try:
-        with open(r'pagestyle.css', 'r') as cssfile:
+        with open(cssfilename, 'r') as cssfile:
             return cssfile.read()
     except Exception as err:
-        self.output(f'Loading CSS file failed - {err}')
+        print(f'Loading CSS file failed - {err}')
 
 def load_data(infile):
     try:
         with open(infile, 'r') as infile:
             indata = infile.read()
-        self.output('Data loaded.')
+        print('Data loaded.')
         return indata
     except Exception as err:
         self.output(f'{err}')
 
 def exception_hook(exctype, value, traceback):
-    self.output(exctype, value, traceback)
+    print(exctype, value, traceback)
     sys._excepthook(exctype, value, traceback)
     sys.exit(1)
 

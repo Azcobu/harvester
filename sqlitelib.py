@@ -8,8 +8,7 @@ import sqlite3
 import rsslib
 from datetime import datetime, timezone, date, timedelta
 
-sevtext = 'What struck me on the beach—and it struck me indeed, so that I staggered as at a blow—was that if the Eternal Principle had rested in that curved thorn I had carried about my neck across so many leagues, and if it now rested in the new thorn (perhaps the same thorn) I had only now put there, then it might rest in anything, and in fact probably did rest in everything, in every thorn on every bush, in every drop of water in the sea. The thorn was a sacred Claw because all thorns were sacred Claws; the sand in my boots was sacred sand because it came from a beach of sacred sand. The cenobites treasured up the relics of the sannyasins because the sannyasins had approached the Pancreator. But everything had approached and even touched the Pancreator, because everything had dropped from his hand. Everything was a relic. All the world was a relic. I drew off my boots, that had traveled with me so far, and threw them into the waves that I might not walk shod on holy ground.'
-'''
+
 class Post:
     def __init__(self, post_id, site, author, date, text):
         self.post_id = post_id
@@ -21,7 +20,6 @@ class Post:
     def __repr__(self):
         return (f'ID: {self.post_id}, Site: {self.site}, Author: {self.author}, '
                 f'Date: {self.date}, Text: {self.text}')
-'''
 
 def connect_DB(db_file):
     try:
