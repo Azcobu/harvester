@@ -82,7 +82,7 @@ class ReaderUI(QMainWindow):
         self.load_previous_state()
         self.locate_db()
         # QQQQ needs to validate DB file and ensure it's loaded properly
-        self.db_curs, self.db_conn = sqlitelib.connect_DB(self.db_filename)
+        self.load_db_file(self.db_filename)
         self.load_feed_data()
         self.locate_reddit_dir()
         self.setup_tree()
@@ -118,7 +118,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionSubscribe.triggered.connect(self.new_sub)
         self.ui.actionNew_Fold.triggered.connect(self.new_folder)
         self.ui.actionCreate_Database.triggered.connect(self.create_db)
-        self.ui.actionLoad_Database.triggered.connect(self.load_db)
+        self.ui.actionLoad_Database.triggered.connect(self.load_db_dlg)
         self.ui.actionDatabase_Maintenance.triggered.connect(self.maintain_DB)
         self.ui.actionSelect_Reddit_Directory.triggered.connect(self.locate_reddit_dir)
         self.ui.actionExit.triggered.connect(self.exit_app)
@@ -250,21 +250,39 @@ class ReaderUI(QMainWindow):
 
     def locate_db(self):
         if not self.db_filename:
-            self.output('No local DB found, requesting location.')
-            self.load_db()
+            get_db_msg = QMessageBox()
+            get_db_msg.setWindowTitle("Create or Locate Database")
+            get_db_msg.setText('The database either does not exist or could not be found.')
+            get_db_msg.addButton('Create DB', QMessageBox.YesRole)
+            get_db_msg.addButton('Load DB', QMessageBox.NoRole)
+            get_db_msg.addButton('Quit', QMessageBox.DestructiveRole)
+            bttn = get_db_msg.exec_()
+            #self.output('No local DB found, requesting location.')
+            #self.load_db_dlg()
         else:
             self.output(f'Using DB file {self.db_filename}.')
+            if not self.load_db_file(self.db_filename):
+                self.db_filename = None
+                self.locate_db()
 
-    def load_db(self):
+    def load_db_file(self, db_filename):
+        self.output(f'Loading DB file {db_filename}')
+        db = sqlitelib.connect_DB(db_filename)
+        if db:
+            self.db_curs, self.db_conn = db[0], db[1]
+            self.db_filename = db_filename
+            return True
+        else:
+            self.output(f'Attmpt to load DB file {db_filename} failed.')
+            return False
+
+    def load_db_dlg(self):
         dlg = QFileDialog.getOpenFileName(self, "Open Database", "", \
             "DB Files (*.db);;All files (*.*)")
         if dlg:
-            # QQQQ validate DB here
-            self.db_filename = dlg[0]
-            self.output(f'Loaded DB file {dlg[0]}')
-            self.db_curs, self.db_conn = sqlitelib.connect_DB(self.db_filename)
-            self.load_feed_data()
-            self.setup_tree()
+            if self.load_db_file(dlg[0]):
+                self.load_feed_data()
+                self.setup_tree()
 
     def locate_reddit_dir(self, skip_query=True):
         if not self.redd_dir:

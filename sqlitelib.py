@@ -7,7 +7,7 @@
 import sqlite3
 import rsslib
 from datetime import datetime, timezone, date, timedelta
-
+from os import path
 
 class Post:
     def __init__(self, post_id, site, author, date, text):
@@ -22,6 +22,9 @@ class Post:
                 f'Date: {self.date}, Text: {self.text}')
 
 def connect_DB(db_file):
+    if not db_file or not path.exists(db_file):
+        return None
+
     try:
         conn = sqlite3.connect(db_file)
     except Exception as err:
@@ -291,7 +294,7 @@ def main():
     #lrd = find_date_last_read(feed_id, curs, conn)
     #k = find_date_all_feeds_last_read(curs, conn)
     #print(k)
-    create_DB('d:\\tmp\\posts.db')
+    connect_DB('d:\\tmp\\posts.db')
 
 if __name__ == '__main__':
     main()
