@@ -9,17 +9,20 @@ import rsslib
 from datetime import datetime, timezone, date, timedelta
 from os import path
 
+'''
 class Post:
-    def __init__(self, post_id, site, author, date, text):
+    def __init__(self, post_id, site, author, date, text, flags):
         self.post_id = post_id
         self.site = site
         self.author = author
         self.date = date
         self.text = text
+        self.flags = flags
 
     def __repr__(self):
         return (f'ID: {self.post_id}, Site: {self.site}, Author: {self.author}, '
-                f'Date: {self.date}, Text: {self.text}')
+                f'Date: {self.date}, Text: {self.text}, Flags:{self.flags}')
+'''
 
 def connect_DB(db_file):
     if not db_file or not path.exists(db_file):
@@ -174,7 +177,6 @@ def write_feed_list(db_file, feedlist, curs=None, conn=None):
     conn.commit()
 
 def get_feed_posts(feed_id, curs=None, conn=None):
-
     try:
         query = f'SELECT * FROM `posts` WHERE `feed_id` = "{feed_id}" ORDER BY `date` DESC;'
         curs.execute(query)
@@ -184,7 +186,6 @@ def get_feed_posts(feed_id, curs=None, conn=None):
         print(f'Error retrieving posts for {feed_id} - {err}')
 
 def get_folder_posts(folder, curs=None, conn=None):
-
     try:
         query = f'SELECT * FROM `posts` WHERE `folder` = "{folder}" ORDER BY `date` DESC;'
         curs.execute(query)
@@ -194,7 +195,6 @@ def get_folder_posts(folder, curs=None, conn=None):
         print(f'Error retrieving posts for {feed_id} - {err}')
 
 def count_all_unread(curs=None, conn=None):
-
     try:
         query = ("SELECT p.feed_id, COUNT(*) FROM `posts` p WHERE p.flags = 'None' GROUP BY p.feed_id;")
         curs.execute(query)
@@ -204,7 +204,6 @@ def count_all_unread(curs=None, conn=None):
         print(f'Error counting unread posts for feeds - {err}')
 
 def get_most_recent(numposts, curs=None, conn=None):
-
     try:
         query = (f"SELECT * FROM `posts` p ORDER BY p.date DESC LIMIT {numposts};")
         curs.execute(query)
@@ -219,7 +218,6 @@ def vacuum(conn):
     print('DB maintenance complete.')
 
 def mark_old_as_read(numdays, curs=None, conn=None):
-
     query = f'UPDATE `posts` SET `flags` = 1 WHERE `date` < date("now", "-{numdays} day")'
     #query = "SELECT * FROM `posts` WHERE `date` < date('now', '-365 day');"
     curs.execute(query)
@@ -271,6 +269,23 @@ def retrieve_feedlist(curs=None, conn=None):
             print('Error loading feeds from DB - {err}')
         feedlist.append(newfeed)
     return feedlist
+
+def delete_feed(feed, curs=None, conn=None):
+    if not curs:
+        curs, conn = connect_DB(filename)
+
+    try:
+        delquery = f'DELETE FROM `posts` WHERE `feed_id` = "{feed.feed_id}";'
+        curs.execute(delquery)
+        delquery = f'DELETE FROM `feeds` WHERE `id` = "{feed.feed_id}";'
+        curs.execute(delquery)
+        conn.commit()
+    except Exception as err:
+        print(f'Error deleting feed {feed} - {err}')
+        return False
+    else:
+        print(f'Deleted feed {feed}.')
+        return True
 
 def main():
     #dbfile = 'd:\\tmp\\posts.db'

@@ -18,6 +18,12 @@ body {
 	
 }
 
+.post .read { color: deepskyblue;
+			  font-weight: normal; }
+
+.post .unread { color: blue;
+                font-weight: bold; }
+
 hr.new {
   border: 2px rgb(0, 0, 64);
   border-radius: 5px;

@@ -434,7 +434,7 @@ class ReaderUI(QMainWindow):
 
     def view_most_recent(self, num=100):
         self.output(f'Showing {num} most recent posts.')
-        startposts = sqlitelib.get_most_recent(num, self.db_curs, self.db_conn)[1:] #trim first, Wertzone promo post
+        startposts = sqlitelib.get_most_recent(num, self.db_curs, self.db_conn)
         posthtml = self.generate_posts_page(startposts)
         self.ui.webEngine.setHtml(posthtml)
 
@@ -525,11 +525,17 @@ class ReaderUI(QMainWindow):
                      "This will unsubscribe you from the feed and delete all saved posts. Are you sure?",
                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if confirm == QMessageBox.Yes:
-                self.output(f'unsub from {self.node_id}')
+                delfeed = [x for x in self.feedlist if x.feed_id == self.node_id][0]
+                self.feedlist.remove(delfeed)
+                res = sqlitelib.delete_feed(delfeed, self.db_curs, self.db_conn)
+                if res:
+                    self.output(f'Unsubscribed from {delfeed.feed_id}.')
+                    self.ui.statusbar.showMessage(f'Unsubscribed from {delfeed.feed_id}.')
+                    self.load_feed_data()
+                    self.setup_tree()
 
     def generate_posts_page(self, results=None):
-        # also needs some indicator of if feed has been read
-        if results:
+        if results: # cache results
             self.results = results
         else:
             results = self.results
@@ -551,8 +557,9 @@ class ReaderUI(QMainWindow):
         if results:
             for post in results:
                 convdate = convert_isodate_to_fulldate(post.date)
+                isread = 'unread' if post.flags == 'None' else 'read'
                 page.append('<div class="post">'
-                            f'<h4><a href="{post.url}">{post.title}</a></h4>'
+                            f'<a class="{isread}" href="{post.url}">{post.title}</a>'
                             f'<h5>{post.author} on {convdate}</h5>'
                             f'<p>{post.content}'
                             f'</div><hr class="new">')
@@ -582,14 +589,8 @@ class ReaderUI(QMainWindow):
             self.ui.buttonPrevPage.setDisabled(True)
 
     def handle_nextprev_buttons(self):
-        if self.curr_page < self.max_page:
-            self.ui.buttonPrevPage.setDisabled(False)
-        if self.curr_page == self.max_page:
-            self.ui.buttonNextPage.setDisabled(True)
-        if self.curr_page > 1:
-            self.ui.buttonNextPage.setDisabled(False)
-        if self.curr_page == 1:
-            self.ui.buttonPrevPage.setDisabled(True)
+        self.ui.buttonNextPage.setDisabled(self.curr_page == self.max_page)
+        self.ui.buttonPrevPage.setDisabled(self.curr_page == 1)
 
     def new_folder(self):
         newfolder, ok = QInputDialog.getText(self, 'New Folder Name', 'Enter folder name:')
@@ -684,8 +685,6 @@ class NewSubDialog(QDialog):
                 self.ui.lblFeedValid.setText('Feed URL is invalid.')
 
     def ok_button(self):
-        #self.parent.srchtext = self.ui.lineSubSearch.text()
-        #self.close()
         self.accept()
 
     def cancel_button(self):
