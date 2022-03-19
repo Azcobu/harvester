@@ -485,22 +485,28 @@ class ReaderUI(QMainWindow):
 
     def new_sub(self):
         # should verify url if possible, then add the feed to the DB,
-        # load posts from the feed and refresh the tree. How to decide folders?
+        # load posts from the feed and refresh the tree.
         newsubform = NewSubDialog(self)
         if newsubform.exec():
             newsub = newsubform.get_inputs()
             self.ui.statusbar.showMessage(f'Adding new subscription: {newsub.title} - {newsub.rss_url} to folder {newsub.folder}')
             sqlitelib.write_feed(newsub, self.db_curs, self.db_conn)
+            self.update_feed(newsub)
             self.load_feed_data()
             self.setup_tree()
-            #sqlitelib.get_feed_posts(newsub, self.db_curs, self.db_conn)
             #QQQQ need to add to tree, refresh
 
     def mark_read(self):
         self.output(f'Mark feed {self.node_name} - {self.node_id} read.')
 
-    def update_feed(self):
-        self.output(f'Updating {self.node_name} id {self.node_id}')
+    def update_feed(self, feed=None):
+        if not feed:
+            node_id = self.ui.treeMain.currentItem().text(1)
+            feed = [x for x in self.feedlist if x.feed_id == node_id][0]
+        self.output(f'Updating {feed.title}')
+        self.ui.statusbar.showMessage(f'Updating {feed.title}')
+        rsslib.retrieve_feed(feed, self.db_curs, self.db_conn)
+        sqlitelib.get_feed_posts(feed.feed_id, self.db_curs, self.db_conn)
 
     def search_feeds(self):
         srchdialog = SrchDialog(self)

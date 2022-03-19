@@ -137,7 +137,7 @@ def parse_post(feed, postdata):
         print(f'Post parsing failed - {err}.')
         errorlog.append(f'{err} - ' + str(postdata) + '\n\n')
 
-def retrieve_feed(feed, db_file):
+def retrieve_feed(feed, db_curs, db_conn):
     postlist = []
 
     parsedfeed = feedparser.parse(feed.rss_url)
@@ -150,7 +150,7 @@ def retrieve_feed(feed, db_file):
                 #print(newpost.title)
                 postlist.append(newpost)
                 #sqlitelib.write_post('d:\\tmp\\posts.db', newpost)
-        sqlitelib.write_post_list(db_file, postlist)
+        sqlitelib.write_post_list(postlist, db_curs, db_conn)
     else:
         print(f'No posts found for {feed.title}')
 
@@ -234,9 +234,11 @@ def worker(listsize, workernum, q, DB_queue, mainwin=None, flags=None, upicon=No
         q.task_done()
     DB_queue.put('stopsignal')
 
-def DB_writer(DB_queue, numworkers, db_file, mainwin):
+def DB_writer(DB_queue, numworkers, db_filename, mainwin):
     stopsfound = 0
     postlist = []
+
+    db_curs, db_conn = sqlitelib.connect_DB(db_filename)
 
     while stopsfound < numworkers:
         while not DB_queue.empty():
@@ -253,7 +255,7 @@ def DB_writer(DB_queue, numworkers, db_file, mainwin):
         if postlist:
             print(f'Writing batch of {len(postlist)} posts to DB.')
             try:
-                sqlitelib.write_post_list(db_file, postlist)
+                sqlitelib.write_post_list(postlist, db_curs, db_conn)
             except Exception as err:
                 print(f"DB write error - {err}")
             postlist = []

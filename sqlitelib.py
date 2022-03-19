@@ -111,7 +111,7 @@ def get_data(curs, conn):
         newmsg = Post(*m)
         print(newmsg)
 
-def write_post(filename, post, curs=None, conn=None):
+def write_post(post, curs=None, conn=None):
     # id, feed_id, title, author, url, date, content, flags
 
     if not curs:
@@ -127,7 +127,7 @@ def write_post(filename, post, curs=None, conn=None):
     conn.commit()
     conn.close()
 
-def write_post_list(db_file, postlist, curs=None, conn=None):
+def write_post_list(postlist, curs=None, conn=None):
     postssql = []
 
     if not curs:
@@ -287,9 +287,17 @@ def delete_feed(feed, curs=None, conn=None):
         print(f'Deleted feed {feed}.')
         return True
 
+def usage_report(curs, conn, num_shown=10):
+    q = 'SELECT feed_id, sum(length(content)) AS cl FROM `posts` GROUP BY feed_id ORDER BY cl DESC;'
+    curs.execute(q)
+    results = curs.fetchall()
+    print('DB Usage Report:')
+    for x in range(num_shown):
+        print(f'{results[x][0]} - {results[x][1]}')
+
 def main():
-    #dbfile = 'd:\\tmp\\posts.db'
-    #curs, conn = connect_DB(dbfile)
+    dbfile = 'd:\\tmp\\posts.db'
+    curs, conn = connect_DB(dbfile)
     #create_DB()
     #get_data(curs, conn)
     #newpost = Post(2, 'The Hypogeum', 'Fathr Inire', '2021-06-08', 'Certainly it is desirable to maintain in being a movement that has proved so useful in the past, and as long as the mirrors of the caller Hethor remain unbroken, she provides it with a plausible commander.')
@@ -309,7 +317,8 @@ def main():
     #lrd = find_date_last_read(feed_id, curs, conn)
     #k = find_date_all_feeds_last_read(curs, conn)
     #print(k)
-    connect_DB('d:\\tmp\\posts.db')
+    usage_report(curs, conn, 20)
+
 
 if __name__ == '__main__':
     main()
