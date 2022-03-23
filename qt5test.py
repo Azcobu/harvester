@@ -359,7 +359,7 @@ class ReaderUI(QMainWindow):
             for rf in reddfiles:
                 if srchtext in rf:
                     newnode = QTreeWidgetItem(self.ui.treeMain, [f'{rf}', 'reddfile'])
-                    newnode.setFont(0, QFont("Georgia", 10))
+                    newnode.setFont(0, QFont('Segoe UI', 10))
 
     def collate_feeds_last_read(self):
         # QQQQ for each feed, gets the date of the last read post
