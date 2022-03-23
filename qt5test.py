@@ -195,13 +195,10 @@ class ReaderUI(QMainWindow):
         if srchtext == '':
             self.setup_tree()
         else:
-            if len(srchtext) < 2: #ignore 1 letter
-                pass
-            else:
-                try:
-                    self.generate_filtered_tree(srchtext)
-                except Exception as err:
-                    self.output(f'{err}')
+            try:
+                self.generate_filtered_tree(srchtext)
+            except Exception as err:
+                self.output(f'{err}')
 
     def set_web_zoom(self):
         if not (isinstance(self.web_zoom, float) or isinstance(self.web_zoom, int)):
@@ -304,7 +301,7 @@ class ReaderUI(QMainWindow):
 
     def setup_tree(self):
         # Need to evaluate unread count - worth doing every time?
-        unread_count_dict = sqlitelib.count_all_unread(self.db_curs, self.db_conn)
+        unread_count = sqlitelib.count_all_unread(self.db_curs, self.db_conn)
 
         # QQQQ find the date/time of the newest post that has been read, for each feed
         # this is so worker threads can update tree with unread numbers
@@ -319,8 +316,8 @@ class ReaderUI(QMainWindow):
             self.ui.treeMain.addTopLevelItem(foldernode)
             for feed in self.feedlist:
                 if feed.folder == f:
-                    if feed.feed_id in unread_count_dict:
-                        unread_count_str = f' ({unread_count_dict[feed.feed_id]})'
+                    if feed.feed_id in unread_count:
+                        unread_count_str = f' ({unread_count[feed.feed_id]})'
                     else:
                         unread_count_str = ''
                     newnode = QTreeWidgetItem(foldernode, [f'{feed.title}{unread_count_str}', feed.feed_id])
@@ -340,11 +337,10 @@ class ReaderUI(QMainWindow):
                 newnode.setFont(0, QFont("Segoe UI", 10))
 
     def generate_filtered_tree(self, srchtext):
-        unread_count_dict = sqlitelib.count_all_unread(self.db_curs, self.db_conn)
-
+        self.output(f'Searching for feeds with {srchtext} in name...')
+        unread_count_dict = sqlitelib.count_filtered_unread(srchtext, self.db_curs, self.db_conn)
         self.ui.treeMain.clear()
         srchtext = srchtext.lower()
-        self.output(f'Searching for feeds with {srchtext} in name...')
 
         for feed in self.feedlist:
             if srchtext in feed.title.lower():
@@ -354,7 +350,7 @@ class ReaderUI(QMainWindow):
                     unread_count = 0
                 newnode = QTreeWidgetItem(self.ui.treeMain, [f'{feed.title} ({unread_count})', feed.feed_id])
                 newnode.setFont(0, QFont("Georgia", 10))
-                #self.ui.treeMain.addTopLevelItem(newnode)
+                self.ui.treeMain.addTopLevelItem(newnode)
 
         # add redd folder
         if self.redd_dir:

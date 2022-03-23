@@ -68,7 +68,9 @@ def create_DB(filename):
             flags   text
             )
         ''')
-
+        c.execute("CREATE INDEX post_dates ON posts (date);")
+        c.execute("CREATE INDEX post_feed_ids ON posts (feed_id);")
+        c.execute("CREATE INDEX post_flags ON posts (flags);")
         conn.commit()
         conn.close()
         return True
@@ -203,6 +205,18 @@ def count_all_unread(curs=None, conn=None):
     except Exception as err:
         print(f'Error counting unread posts for feeds - {err}')
 
+def count_filtered_unread(feed_str, curs=None, conn=None):
+    # returns unread count for feeds with title matching search string
+    # note matching feeds with 0 unread are not returned
+    try:
+        query = ("SELECT p.feed_id, COUNT(*) FROM `posts` p WHERE p.feed_id IN (SELECT f.id "
+	             f"FROM `feeds` f WHERE f.title LIKE '%{feed_str}%') AND p.flags = 'None' GROUP BY p.feed_id;")
+        curs.execute(query)
+        k =  {x[0]:x[1] for x in curs.fetchall()}
+        return k
+    except Exception as err:
+        print(f'Error counting unread posts for feeds - {err}')
+
 def get_most_recent(numposts, curs=None, conn=None):
     try:
         query = (f"SELECT * FROM `posts` p ORDER BY p.date DESC LIMIT {numposts};")
@@ -295,6 +309,9 @@ def usage_report(curs, conn, num_shown=10):
     for x in range(num_shown):
         print(f'{results[x][0]} - {results[x][1]}')
 
+def run_arbitrary_sql(query, curs, conn):
+    curs.execute(query)
+
 def main():
     dbfile = 'd:\\tmp\\posts.db'
     curs, conn = connect_DB(dbfile)
@@ -317,8 +334,8 @@ def main():
     #lrd = find_date_last_read(feed_id, curs, conn)
     #k = find_date_all_feeds_last_read(curs, conn)
     #print(k)
-    usage_report(curs, conn, 20)
-
+    #usage_report(curs, conn)
+    print(count_filtered_unread('eco', curs, conn))
 
 if __name__ == '__main__':
     main()
