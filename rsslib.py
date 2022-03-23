@@ -220,7 +220,10 @@ def worker(listsize, workernum, q, DB_queue, mainwin=None, flags=None, upicon=No
             print(f'No posts found for {currfeed.title}')
 
         if mainwin.treeMain and node:
-            node.setIcon(0, curricon)
+            try:
+                node.setIcon(0, curricon)
+            except Exception as err:
+                pass
             #if unread_count:
             #    node.setText(0, f'{currfeed.title} ({unread_count})')
             #    node.setFont(0, QFont('Segoe UI', 10, QFont.Bold))

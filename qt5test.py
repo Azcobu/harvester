@@ -349,7 +349,8 @@ class ReaderUI(QMainWindow):
                 else:
                     unread_count = 0
                 newnode = QTreeWidgetItem(self.ui.treeMain, [f'{feed.title} ({unread_count})', feed.feed_id])
-                newnode.setFont(0, QFont("Georgia", 10))
+                fontweight = QFont.Bold if unread_count else False
+                newnode.setFont(0, QFont('Segoe UI', 10, fontweight))
                 self.ui.treeMain.addTopLevelItem(newnode)
 
         # add redd folder
