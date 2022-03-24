@@ -43,7 +43,7 @@ class CustomWebEnginePage(QWebEnginePage):
 class ReaderUI(QMainWindow):
     version_str = 'Harvester 0.1'
     console_output = True
-    db_filename = ''
+    db_filename = None
     node_name, node_id = '', ''
     web_zoom = 1.25
     srchtext = ''
@@ -76,17 +76,10 @@ class ReaderUI(QMainWindow):
         self.ui._search_panel.closed.connect(self.ui.search_toolbar.hide)
 
         self.initializeUI()
+        self.init_data()
         self.show()
 
     def initializeUI(self):
-        self.load_previous_state()
-        self.locate_db()
-        # QQQQ needs to validate DB file and ensure it's loaded properly
-        self.load_db_file(self.db_filename)
-        self.load_feed_data()
-        self.locate_reddit_dir()
-        self.setup_tree()
-
         self.ui.treeMain.setMouseTracking(True)
         self.ui.treeMain.itemClicked.connect(self.tree_click)
         self.ui.treeMain.itemEntered.connect(self.tree_hover)
@@ -118,7 +111,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionSubscribe.triggered.connect(self.new_sub)
         self.ui.actionNew_Fold.triggered.connect(self.new_folder)
         self.ui.actionCreate_Database.triggered.connect(self.create_db)
-        self.ui.actionLoad_Database.triggered.connect(self.load_db_dlg)
+        self.ui.actionLoad_Database.triggered.connect(self.menu_load_db)
         self.ui.actionDatabase_Maintenance.triggered.connect(self.maintain_DB)
         self.ui.actionSelect_Reddit_Directory.triggered.connect(self.locate_reddit_dir)
         self.ui.actionExit.triggered.connect(self.exit_app)
@@ -153,8 +146,15 @@ class ReaderUI(QMainWindow):
 
         self.ui.webEngine.loadFinished.connect(self.set_web_zoom)
         self.ui.webEngine.setZoomFactor(self.web_zoom)
+
+    def init_data(self):
+        self.load_previous_state()
+        self.load_db_file(self.db_filename)
+        self.load_feed_data()
+        self.locate_reddit_dir()
+        self.setup_tree()
         self.view_most_recent()
-        self.update_all_feeds()
+        #self.update_all_feeds()
 
     def link_hover(self, url):
         self.ui.statusbar.showMessage(f'{url}')
@@ -235,7 +235,7 @@ class ReaderUI(QMainWindow):
                 self.web_zoom = 1.25
 
     def save_state(self):
-        # here's where we save program size and position on exit
+        # save program size and position on exit
         # save treeview state at some stage?
         settings = QSettings('Hypogeum', 'Harvester')
         settings.setValue("geometry", self.saveGeometry())
@@ -247,39 +247,59 @@ class ReaderUI(QMainWindow):
 
     def locate_db(self):
         if not self.db_filename:
-            get_db_msg = QMessageBox()
+            get_db_msg = QMessageBox(self)
             get_db_msg.setWindowTitle("Create or Locate Database")
+            get_db_msg.setIcon(QMessageBox.Critical)
             get_db_msg.setText('The database either does not exist or could not be found.')
-            get_db_msg.addButton('Create DB', QMessageBox.YesRole)
-            get_db_msg.addButton('Load DB', QMessageBox.NoRole)
-            get_db_msg.addButton('Quit', QMessageBox.DestructiveRole)
-            bttn = get_db_msg.exec_()
-            #self.output('No local DB found, requesting location.')
-            #self.load_db_dlg()
-        else:
-            self.output(f'Using DB file {self.db_filename}.')
-            if not self.load_db_file(self.db_filename):
-                self.db_filename = None
-                self.locate_db()
+            btn_create_db = get_db_msg.addButton('Create DB', QMessageBox.AcceptRole)
+            btn_load_db = get_db_msg.addButton('Load DB', QMessageBox.AcceptRole)
+            btn_quit = get_db_msg.addButton('Quit', QMessageBox.DestructiveRole)
+            get_db_msg.exec_()
+            get_db_msg.deleteLater()
+
+            if get_db_msg.clickedButton() is btn_create_db:
+                return self.create_db()
+            elif get_db_msg.clickedButton() is btn_load_db:
+                return self.load_db_dlg()
+            else:
+                self.exit_app()
 
     def load_db_file(self, db_filename):
+        if not db_filename:
+            db_filename = self.locate_db()
         self.output(f'Loading DB file {db_filename}')
         db = sqlitelib.connect_DB(db_filename)
-        if db:
+        if not db:
+            self.output(f'Attmpt to load DB file {db_filename} failed.')
+            self.db_filename = None
+            #self.locate_db()
+            #db = sqlitelib.connect_DB(db_filename)
+            return False
+        else:
             self.db_curs, self.db_conn = db[0], db[1]
             self.db_filename = db_filename
             return True
-        else:
-            self.output(f'Attmpt to load DB file {db_filename} failed.')
-            return False
 
     def load_db_dlg(self):
         dlg = QFileDialog.getOpenFileName(self, "Open Database", "", \
             "DB Files (*.db);;All files (*.*)")
-        if dlg:
+        if dlg[0] != '':
+            return dlg[0]
+            '''
             if self.load_db_file(dlg[0]):
-                self.load_feed_data()
-                self.setup_tree()
+                self.db_filename = dlg[0]
+                self.output('Setting DB file to {dlg[0]}.')
+            '''
+        else: #cancelled dialog
+            self.output('Loading file cancelled.')
+            return None
+
+    def menu_load_db(self):
+        fname = self.load_db_dlg()
+        self.load_db_file(fname)
+        self.load_feed_data()
+        self.setup_tree()
+        self.view_most_recent()
 
     def locate_reddit_dir(self, skip_query=True):
         if not self.redd_dir:
@@ -345,11 +365,11 @@ class ReaderUI(QMainWindow):
         for feed in self.feedlist:
             if srchtext in feed.title.lower():
                 if feed.feed_id in unread_count_dict:
-                    unread_count = unread_count_dict[feed.feed_id]
+                    unread_count_str = f'({unread_count_dict[feed.feed_id]})'
                 else:
-                    unread_count = 0
-                newnode = QTreeWidgetItem(self.ui.treeMain, [f'{feed.title} ({unread_count})', feed.feed_id])
-                fontweight = QFont.Bold if unread_count else False
+                    unread_count_str = ''
+                newnode = QTreeWidgetItem(self.ui.treeMain, [f'{feed.title} {unread_count_str}', feed.feed_id])
+                fontweight = QFont.Bold if unread_count_str else False
                 newnode.setFont(0, QFont('Segoe UI', 10, fontweight))
                 self.ui.treeMain.addTopLevelItem(newnode)
 
@@ -371,8 +391,9 @@ class ReaderUI(QMainWindow):
     def exit_app(self):
         self.output('Exiting app...')
         self.close()
+        sys.exit(0)
 
-    def create_db(self, ):
+    def create_db(self):
         try:
             dlg = QFileDialog.getSaveFileName(self, "Create New Database")
             if dlg:
@@ -382,6 +403,7 @@ class ReaderUI(QMainWindow):
         if sqlitelib.create_DB(new_db):
             self.db_filename = new_db
             self.db_curs, self.db_conn = sqlitelib.connect_DB(new_db)
+            return self.db_filename
 
     def tree_click(self):
         #QQQQ also needs to update page controls, as max_page doesn't seem to update
@@ -510,7 +532,7 @@ class ReaderUI(QMainWindow):
         srchdialog.exec()
         if self.srchtext:
             self.output(f'Searching feeds DB for "{self.srchtext}" in {self.srchtime.lower()}.')
-            results = sqlitelib.text_search(self.srchtext, 50, self.db_curs, self.db_conn, self.srchtime)
+            results = sqlitelib.text_search(self.srchtext, self.db_curs, self.db_conn, 100, self.srchtime)
             if results:
                 self.ui.statusbar.showMessage(f'{len(results)} results found.')
                 posthtml = self.generate_posts_page(results)

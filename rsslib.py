@@ -251,7 +251,8 @@ def DB_writer(DB_queue, numworkers, db_filename, mainwin):
                 print(f'Stop signal {stopsfound} found.')
                 if stopsfound == 10:
                     print('Scan completed.')
-                    mainwin.statusbar.showMessage('Feed scan completed.')
+                    if mainwin.statusbar.isVisible() == True:
+                        mainwin.statusbar.showMessage('Feed scan completed.')
             else:
                 postlist.append(currpost)
 

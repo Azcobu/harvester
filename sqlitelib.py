@@ -79,31 +79,34 @@ def create_DB(filename):
         return False
 
 def calc_limit_date(instr):
-    timediffs = {'day':1, 'week':7, 'month':31, 'year':365}
-    for k, v in timediffs.items():
-        if k in instr:
-            #return (date.today() - timedelta(days=v)).isoformat()
-            return v
+    if instr:
+        timediffs = {'day':1, 'week':7, 'month':31, 'year':365}
+        for k, v in timediffs.items():
+            if k in instr:
+                return v
     else:
-        return 999999
+        return 99999
 
-def text_search(srchtext, limit=None, curs=None, conn=None, datelimit=None):
+def text_search(srchtext, curs, conn, limit=None, datelimit=None):
     # search scores?
-    # search for multiple terms?
 
-    datelimit = calc_limit_date(datelimit)
-    #  `date` < date("now", "-{numdays} day")'
+    if datelimit:
+        datelimit = calc_limit_date(datelimit)
 
+    query = f'SELECT * FROM posts WHERE `content` LIKE "%{srchtext}%" '
+    if datelimit:
+        query += f'AND `date` >= date("now", "-{datelimit} day") '
+    query += f'ORDER BY `date` DESC'
+    if limit:
+        query += f' LIMIT {limit} '
     try:
-        curs.execute(f'SELECT * FROM posts WHERE `content` LIKE "%{srchtext}%" '
-                     f'AND `date` >= date("now", "-{datelimit} day") '
-                     f'ORDER BY `date` DESC LIMIT {limit}')
+        curs.execute(query)
     except Exception as err:
-        print(f'Error: {err}')
+        print(f'Error: {err}. Full query was {query}')
+        return None
     else:
         results = curs.fetchall()
-
-    return convert_results_to_postlist(results)
+        return convert_results_to_postlist(results)
 
 def get_data(curs, conn):
     curs.execute('SELECT * FROM posts')
@@ -335,7 +338,8 @@ def main():
     #k = find_date_all_feeds_last_read(curs, conn)
     #print(k)
     #usage_report(curs, conn)
-    print(count_filtered_unread('eco', curs, conn))
+    #print(count_filtered_unread('eco', curs, conn))
+    print(text_search('kryl', curs, conn, 50))  # kryl
 
 if __name__ == '__main__':
     main()
