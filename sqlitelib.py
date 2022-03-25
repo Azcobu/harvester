@@ -93,14 +93,16 @@ def text_search(srchtext, curs, conn, limit=None, datelimit=None):
     if datelimit:
         datelimit = calc_limit_date(datelimit)
 
-    query = f'SELECT * FROM posts WHERE `content` LIKE "%{srchtext}%" '
+    srchtext = f'%{srchtext}%'
+
+    query = f'SELECT * FROM posts WHERE `content` LIKE ? '
     if datelimit:
         query += f'AND `date` >= date("now", "-{datelimit} day") '
     query += f'ORDER BY `date` DESC'
     if limit:
         query += f' LIMIT {limit} '
     try:
-        curs.execute(query)
+        curs.execute(query, (srchtext,))
     except Exception as err:
         print(f'Error: {err}. Full query was {query}')
         return None
@@ -211,10 +213,12 @@ def count_all_unread(curs=None, conn=None):
 def count_filtered_unread(feed_str, curs=None, conn=None):
     # returns unread count for feeds with title matching search string
     # note matching feeds with 0 unread are not returned
+
+    feed_str = f'%{feed_str}%'
     try:
         query = ("SELECT p.feed_id, COUNT(*) FROM `posts` p WHERE p.feed_id IN (SELECT f.id "
-	             f"FROM `feeds` f WHERE f.title LIKE '%{feed_str}%') AND p.flags = 'None' GROUP BY p.feed_id;")
-        curs.execute(query)
+	             f"FROM `feeds` f WHERE f.title LIKE ?) AND p.flags = 'None' GROUP BY p.feed_id;")
+        curs.execute(query, (feed_str,))
         k =  {x[0]:x[1] for x in curs.fetchall()}
         return k
     except Exception as err:
@@ -304,6 +308,39 @@ def delete_feed(feed, curs=None, conn=None):
         print(f'Deleted feed {feed}.')
         return True
 
+def delete_all_but_last_n(feed_id, keepnum, curs, conn, verbose=True):
+    query = '''DELETE FROM `posts` WHERE `feed_id` = ? AND `id` NOT IN
+    (SELECT `id` FROM `posts` WHERE `feed_id` = ? ORDER BY `date` DESC LIMIT ?) '''
+    try:
+        curs.execute(query, (feed_id, feed_id, keepnum))
+        conn.commit()
+    except Exception as err:
+        print(f'Error deleting past {keepnum} posts from {feed_id} - {err}')
+    else:
+        if verbose:
+            print(f'Deleted all but last {keepnum} posts from {feed_id}.')
+
+def mass_delete_all_but_last_n(keepnum, curs, conn):
+    feedlist = list_feeds_over_post_count(keepnum, curs, conn)
+    for f in feedlist:
+        delete_all_but_last_n(f, keepnum, curs, conn)
+    vacuum(conn)
+
+def list_feeds_over_post_count(maxposts, curs, conn, output=False):
+    q = '''SELECT p.feed_id, COUNT(p.id) FROM `posts` p GROUP BY p.feed_id
+           HAVING COUNT(p.id) > ? ORDER BY COUNT(p.id) DESC;'''
+    curs.execute(q, (maxposts,))
+    if output:
+        for num, x in enumerate(curs.fetchall()):
+            print(f'{num+1}. Feed: {x[0]} - {x[1]} posts.')
+    else:
+        return [x[0] for x in curs.fetchall()]
+
+def count_posts(feed_id, curs, conn):
+    q = 'SELECT COUNT(*) FROM `posts` WHERE `feed_id` = ?'
+    curs.execute(q, (feed_id,))
+    return curs.fetchall()[0][0]
+
 def usage_report(curs, conn, num_shown=10):
     q = 'SELECT feed_id, sum(length(content)) AS cl FROM `posts` GROUP BY feed_id ORDER BY cl DESC;'
     curs.execute(q)
@@ -339,7 +376,9 @@ def main():
     #print(k)
     #usage_report(curs, conn)
     #print(count_filtered_unread('eco', curs, conn))
-    print(text_search('kryl', curs, conn, 50))  # kryl
+    #print(text_search('kryl', curs, conn, 50))  # kryl
+    #print(list_feeds_over_post_count(400, curs, conn, True))
+    mass_delete_all_but_last_n(100, curs, conn)
 
 if __name__ == '__main__':
     main()
