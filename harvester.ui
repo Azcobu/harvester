@@ -171,7 +171,7 @@
     <string>New Folder</string>
    </property>
    <property name="statusTip">
-    <string>Creates a new folder to store feeds in.</string>
+    <string>Create a new folder to store feeds in.</string>
    </property>
   </action>
   <action name="actionImport_Feeds">
@@ -195,7 +195,7 @@
     <string>Database Maintenance</string>
    </property>
    <property name="statusTip">
-    <string>Performs database maintenance, saving some space.</string>
+    <string>Perform database maintenance, saving some space.</string>
    </property>
   </action>
   <action name="actionExit">
@@ -391,7 +391,7 @@
     <string>Delete Older Posts</string>
    </property>
    <property name="statusTip">
-    <string>Deletes all but the 100 most recent posts from all feeds.</string>
+    <string>Delete all but the 100 most recent posts from all feeds.</string>
    </property>
   </action>
   <action name="actionDelete_Folder_2">
@@ -399,7 +399,7 @@
     <string>Delete Folder</string>
    </property>
    <property name="statusTip">
-    <string>Deletes a folder. Only works on empty folders.</string>
+    <string>Delete a folder. Only works on empty folders.</string>
    </property>
   </action>
   <action name="actionUsage_Report">

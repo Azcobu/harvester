@@ -183,23 +183,31 @@ class ReaderUI(QMainWindow):
 
         menu = QMenu()
         action1 = menu.addAction(self.newSubAction)
+        self.newSubAction.setStatusTip("Subscribe to a new RSS feed.")
 
         if self.node_id not in ['folder', 'reddfile']: # we are on an individual feed
             menu.addSeparator()
-            action2 = menu.addAction(self.markReadAction)
+            menu.addAction(self.markReadAction)
+            self.markReadAction.setStatusTip("Mark current feed as read.")
             menu.addSeparator()
 
             curr_node = [x for x in self.feedlist if x.feed_id == self.node_id][0]
 
-            action3 = menu.addAction(self.updateFeedAction)
+            menu.addAction(self.updateFeedAction)
+            self.updateFeedAction.setStatusTip("Update the current feed.")
             menu.addSeparator()
-            action_1 = menu.addAction(self.unsubAction)
-            action_2 = menu.addAction("Choice 2")
-            action_3 = menu.addAction("Choice 3")
+            menu.addAction(self.unsubAction)
+            self.unsubAction.setStatusTip("Unsubscribe from the current feed.")
+            menu.addAction("Choice 2")
+            menu.addAction("Choice 3")
             menu.addSeparator()
 
-            action_nf = menu.addAction(self.ui.actionNew_Fold)
+            menu.addAction(self.ui.actionNew_Fold)
+            self.ui.actionNew_Fold.setStatusTip("Create a new folder to store feeds in.")
+
             move_folder = menu.addMenu('Move to Folder')
+            move_folder.hovered.connect(self.movefolder)
+
             for f in self.folderlist:
                 if f != curr_node.folder:
                     tmp_action = move_folder.addAction(f)
@@ -212,6 +220,9 @@ class ReaderUI(QMainWindow):
         sqlitelib.update_feed_folder(feed.feed_id, folder_name, self.db_curs, self.db_conn)
         feed.folder = folder_name
         self.setup_tree()
+
+    def movefolder(self, folder_name):
+        self.ui.statusbar.showMessage(f'Move current feed to this folder.')
 
     def search_feed_names(self):
         srchtext = self.ui.lineSearch.text()
