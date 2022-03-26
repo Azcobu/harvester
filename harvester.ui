@@ -87,7 +87,7 @@
      <x>0</x>
      <y>0</y>
      <width>796</width>
-     <height>26</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -97,12 +97,15 @@
     <addaction name="actionSubscribe"/>
     <addaction name="separator"/>
     <addaction name="actionNew_Fold"/>
+    <addaction name="actionDelete_Folder_2"/>
     <addaction name="separator"/>
     <addaction name="actionImport_Feeds"/>
     <addaction name="actionExport_Feeds"/>
     <addaction name="separator"/>
     <addaction name="actionCreate_Database"/>
     <addaction name="actionLoad_Database"/>
+    <addaction name="separator"/>
+    <addaction name="actionDelete_Older_Posts"/>
     <addaction name="actionDatabase_Maintenance"/>
     <addaction name="separator"/>
     <addaction name="actionSelect_Reddit_Directory"/>
@@ -114,9 +117,9 @@
      <string>Edit</string>
     </property>
     <addaction name="actionMark_All_Feeds_Read"/>
+    <addaction name="actionMark_Older_As_Read"/>
     <addaction name="separator"/>
     <addaction name="actionFeed_Properties"/>
-    <addaction name="separator"/>
     <addaction name="separator"/>
     <addaction name="actionFind_in_Page"/>
    </widget>
@@ -125,7 +128,6 @@
      <string>View</string>
     </property>
     <addaction name="actionMost_Recent"/>
-    <addaction name="separator"/>
     <addaction name="separator"/>
     <addaction name="actionIncrease_Text_Size"/>
     <addaction name="actionDecrease_Text_Size"/>
@@ -141,8 +143,7 @@
     <addaction name="separator"/>
     <addaction name="actionSearch_Feeds"/>
     <addaction name="separator"/>
-    <addaction name="actionCleanup"/>
-    <addaction name="actionMark_Older_As_Read"/>
+    <addaction name="actionUsage_Report"/>
     <addaction name="separator"/>
     <addaction name="actionOptions"/>
    </widget>
@@ -156,6 +157,9 @@
    <property name="text">
     <string>Subscribe</string>
    </property>
+   <property name="statusTip">
+    <string>Subscribe to a new RSS feed.</string>
+   </property>
   </action>
   <action name="actionNew_Folder">
    <property name="text">
@@ -165,6 +169,9 @@
   <action name="actionNew_Fold">
    <property name="text">
     <string>New Folder</string>
+   </property>
+   <property name="statusTip">
+    <string>Creates a new folder to store feeds in.</string>
    </property>
   </action>
   <action name="actionImport_Feeds">
@@ -179,18 +186,24 @@
    <property name="text">
     <string>Export Feeds</string>
    </property>
+   <property name="statusTip">
+    <string>Export all feeds to an OPML file.</string>
+   </property>
   </action>
   <action name="actionDatabase_Maintenance">
    <property name="text">
     <string>Database Maintenance</string>
    </property>
    <property name="statusTip">
-    <string/>
+    <string>Performs database maintenance, saving some space.</string>
    </property>
   </action>
   <action name="actionExit">
    <property name="text">
     <string>Exit</string>
+   </property>
+   <property name="statusTip">
+    <string>Exit the program.</string>
    </property>
    <property name="shortcut">
     <string>Alt+X</string>
@@ -200,15 +213,24 @@
    <property name="text">
     <string>Mark All Feeds Read</string>
    </property>
+   <property name="statusTip">
+    <string>Mark all feeds as read.</string>
+   </property>
   </action>
   <action name="actionFeed_Properties">
    <property name="text">
     <string>Feed Properties</string>
    </property>
+   <property name="statusTip">
+    <string>Display properties of the selected feed.</string>
+   </property>
   </action>
   <action name="actionFind_in_Page">
    <property name="text">
     <string>Find in Page</string>
+   </property>
+   <property name="statusTip">
+    <string>Search for selected text in the current page.</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+F</string>
@@ -218,15 +240,24 @@
    <property name="text">
     <string>Update All Feeds</string>
    </property>
+   <property name="statusTip">
+    <string>Update all subscribed feeds.</string>
+   </property>
   </action>
   <action name="actionUpdate_Current_Feed">
    <property name="text">
     <string>Update Current Feed</string>
    </property>
+   <property name="statusTip">
+    <string>Update only the selected feed.</string>
+   </property>
   </action>
   <action name="actionSearch_Feeds">
    <property name="text">
     <string>Search Feeds</string>
+   </property>
+   <property name="statusTip">
+    <string>Search all posts in selected timeframe for specified text.</string>
    </property>
   </action>
   <action name="actionCleanup">
@@ -238,6 +269,9 @@
    <property name="text">
     <string>Mark Older As Read</string>
    </property>
+   <property name="statusTip">
+    <string>Mark all feeds older than 3 days as read.</string>
+   </property>
   </action>
   <action name="actionOptions">
    <property name="icon">
@@ -246,6 +280,9 @@
    </property>
    <property name="text">
     <string>Options</string>
+   </property>
+   <property name="statusTip">
+    <string>Display program options.</string>
    </property>
   </action>
   <action name="actionNew_Subscription">
@@ -297,35 +334,80 @@
    <property name="text">
     <string>Update Reddit</string>
    </property>
+   <property name="statusTip">
+    <string>Run the external offline Reddit crawler.</string>
+   </property>
   </action>
   <action name="actionLoad_Database">
    <property name="text">
     <string>Load Database</string>
+   </property>
+   <property name="statusTip">
+    <string>Load a Harvester database.</string>
    </property>
   </action>
   <action name="actionMost_Recent">
    <property name="text">
     <string>Most Recent</string>
    </property>
+   <property name="statusTip">
+    <string>Display the 100 most recent posts from all feeds.</string>
+   </property>
   </action>
   <action name="actionIncrease_Text_Size">
    <property name="text">
     <string>Increase Text Size</string>
+   </property>
+   <property name="statusTip">
+    <string>Increase the display text size by 5%</string>
    </property>
   </action>
   <action name="actionDecrease_Text_Size">
    <property name="text">
     <string>Decrease Text Size</string>
    </property>
+   <property name="statusTip">
+    <string>Decrease the display text size by 5%</string>
+   </property>
   </action>
   <action name="actionSelect_Reddit_Directory">
    <property name="text">
     <string>Select Reddit Directory</string>
    </property>
+   <property name="statusTip">
+    <string>Choose the directory where saved Reddit files are stored.</string>
+   </property>
   </action>
   <action name="actionCreate_Database">
    <property name="text">
     <string>Create Database</string>
+   </property>
+   <property name="statusTip">
+    <string>Create a new Harvester database.</string>
+   </property>
+  </action>
+  <action name="actionDelete_Older_Posts">
+   <property name="text">
+    <string>Delete Older Posts</string>
+   </property>
+   <property name="statusTip">
+    <string>Deletes all but the 100 most recent posts from all feeds.</string>
+   </property>
+  </action>
+  <action name="actionDelete_Folder_2">
+   <property name="text">
+    <string>Delete Folder</string>
+   </property>
+   <property name="statusTip">
+    <string>Deletes a folder. Only works on empty folders.</string>
+   </property>
+  </action>
+  <action name="actionUsage_Report">
+   <property name="text">
+    <string>DB Space Usage Report</string>
+   </property>
+   <property name="statusTip">
+    <string>Show which feeds are taking up the most database space.</string>
    </property>
   </action>
  </widget>

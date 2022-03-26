@@ -111,13 +111,19 @@ class ReaderUI(QMainWindow):
         # File
         self.ui.actionSubscribe.triggered.connect(self.new_sub)
         self.ui.actionNew_Fold.triggered.connect(self.new_folder)
+        #self.ui.actionDelete_Folder_2.triggered.connect(self.delete_folder)
+        #self.ui.actionImport_Feeds.triggered.connect(self.import_feeds)
+        #self.ui.actionExport_Feeds.triggered.connect(self.export_feeds)
         self.ui.actionCreate_Database.triggered.connect(self.create_db)
         self.ui.actionLoad_Database.triggered.connect(self.menu_load_db)
+        #self.ui.actionDelete_Older_Posts.triggered.connect(self.delete_older_posts)
         self.ui.actionDatabase_Maintenance.triggered.connect(self.maintain_DB)
         self.ui.actionSelect_Reddit_Directory.triggered.connect(self.locate_reddit_dir)
         self.ui.actionExit.triggered.connect(self.exit_app)
 
         # Edit
+        #self.ui.actionMark_All_Feeds_Read.triggered.connect(self.mark_all)
+        self.ui.actionMark_Older_As_Read.triggered.connect(self.mark_older)
         self.ui.actionFind_in_Page.triggered.connect(self.find_in_page)
 
         # View
@@ -128,7 +134,6 @@ class ReaderUI(QMainWindow):
         # Tools
         self.ui.actionUpdate_All_Feeds.triggered.connect(self.update_all_feeds)
         self.ui.actionSearch_Feeds.triggered.connect(self.search_feeds)
-        self.ui.actionMark_Older_As_Read.triggered.connect(self.mark_older)
         self.ui.actionUpdate_Reddit.triggered.connect(self.update_reddit)
 
         #setup status bar
@@ -139,12 +144,12 @@ class ReaderUI(QMainWindow):
         self.ui.buttonNextPage.clicked.connect(self.next_page)
         self.ui.buttonPrevPage.clicked.connect(self.prev_page)
 
-        self.ui.webEngine.page().linkHovered.connect(self.link_hover)
-
+        #QQQQ
         self.dl_icon = QIcon(r'd:\Dropbox\Python\icons-rss\icons8-download-100.png')
         self.folder_icon = QIcon(r'd:\Dropbox\Python\icons-rss\icons8-folder-100.png')
         self.update_icon = QIcon(r'd:\Dropbox\Python\icons-rss\icons8-right-arrow-100.png')
 
+        self.ui.webEngine.page().linkHovered.connect(self.link_hover)
         self.ui.webEngine.loadFinished.connect(self.set_web_zoom)
         self.ui.webEngine.setZoomFactor(self.web_zoom)
 
@@ -178,15 +183,13 @@ class ReaderUI(QMainWindow):
 
         menu = QMenu()
         action1 = menu.addAction(self.newSubAction)
-        menu.addSeparator()
-        action2 = menu.addAction(self.markReadAction)
-        menu.addSeparator()
-        #action = menu.addAction(f'{self.node_name} - {self.node_id}')
 
         if self.node_id not in ['folder', 'reddfile']: # we are on an individual feed
-            curr_node = [x for x in self.feedlist if x.feed_id == self.node_id]
-            if curr_node:
-                curr_folder = curr_node[0].folder
+            menu.addSeparator()
+            action2 = menu.addAction(self.markReadAction)
+            menu.addSeparator()
+
+            curr_node = [x for x in self.feedlist if x.feed_id == self.node_id][0]
 
             action3 = menu.addAction(self.updateFeedAction)
             menu.addSeparator()
@@ -195,21 +198,19 @@ class ReaderUI(QMainWindow):
             action_3 = menu.addAction("Choice 3")
             menu.addSeparator()
 
+            action_nf = menu.addAction(self.ui.actionNew_Fold)
             move_folder = menu.addMenu('Move to Folder')
             for f in self.folderlist:
-                if f!= curr_folder:
+                if f != curr_node.folder:
                     tmp_action = move_folder.addAction(f)
-                    tmp_action.triggered.connect(partial(self.move_to_folder, self.node_id, f))
+                    tmp_action.triggered.connect(partial(self.move_to_folder, curr_node, f))
 
         menu.exec_(self.ui.treeMain.mapToGlobal(position))
 
-    def move_to_folder(self, feed_id, folder_name):
-        print(f'Moving feed {feed_id} to {folder_name} folder.')
-        sqlitelib.update_feed_folder(feed_id, folder_name, self.db_curs, self.db_conn)
-        for x in self.feedlist:
-            if x.feed_id == feed_id:
-                x.folder = folder_name
-                break
+    def move_to_folder(self, feed, folder_name):
+        print(f'Moving feed {feed.feed_id} to {folder_name} folder.')
+        sqlitelib.update_feed_folder(feed.feed_id, folder_name, self.db_curs, self.db_conn)
+        feed.folder = folder_name
         self.setup_tree()
 
     def search_feed_names(self):
@@ -268,35 +269,33 @@ class ReaderUI(QMainWindow):
         settings.setValue("web_zoom", self.web_zoom)
 
     def locate_db(self):
-        if not self.db_filename:
-            get_db_msg = QMessageBox(self)
-            get_db_msg.setWindowTitle("Create or Locate Database")
-            get_db_msg.setIcon(QMessageBox.Critical)
-            get_db_msg.setText('The database either does not exist or could not be found.')
-            btn_create_db = get_db_msg.addButton('Create DB', QMessageBox.AcceptRole)
-            btn_load_db = get_db_msg.addButton('Load DB', QMessageBox.AcceptRole)
-            btn_quit = get_db_msg.addButton('Quit', QMessageBox.DestructiveRole)
-            get_db_msg.exec_()
-            get_db_msg.deleteLater()
+        get_db_msg = QMessageBox(self)
+        get_db_msg.setWindowTitle("Create or Locate Database")
+        get_db_msg.setIcon(QMessageBox.Critical)
+        get_db_msg.setText('The database either does not exist or could not be found.')
+        btn_create_db = get_db_msg.addButton('Create DB', QMessageBox.AcceptRole)
+        btn_load_db = get_db_msg.addButton('Load DB', QMessageBox.AcceptRole)
+        btn_quit = get_db_msg.addButton('Quit', QMessageBox.DestructiveRole)
+        get_db_msg.exec_()
+        get_db_msg.deleteLater()
 
-            if get_db_msg.clickedButton() is btn_create_db:
-                return self.create_db()
-            elif get_db_msg.clickedButton() is btn_load_db:
-                return self.load_db_dlg()
-            else:
-                self.exit_app()
+        if get_db_msg.clickedButton() is btn_create_db:
+            return self.create_db()
+        elif get_db_msg.clickedButton() is btn_load_db:
+            return self.load_db_dlg()
+        else:
+            sys.exit(0) # still in init loop, so need more forceful exit.
 
     def load_db_file(self, db_filename):
         if not db_filename:
             db_filename = self.locate_db()
         self.output(f'Loading DB file {db_filename}')
         db = sqlitelib.connect_DB(db_filename)
-        if not db:
+        while not db:
             self.output(f'Attmpt to load DB file {db_filename} failed.')
             self.db_filename = None
-            #self.locate_db()
-            #db = sqlitelib.connect_DB(db_filename)
-            return False
+            self.locate_db()
+            db = sqlitelib.connect_DB(db_filename)
         else:
             self.db_curs, self.db_conn = db[0], db[1]
             self.db_filename = db_filename
@@ -413,7 +412,7 @@ class ReaderUI(QMainWindow):
     def exit_app(self):
         self.output('Exiting app...')
         self.close()
-        sys.exit(0)
+        #sys.exit(0)
 
     def create_db(self):
         try:
@@ -563,10 +562,10 @@ class ReaderUI(QMainWindow):
                 self.ui.statusbar.showMessage(f'No results found for search "{self.srchtext}"')
 
     def update_reddit(self):
+        # QQQQ should locate correct file
         Popen(['python', r'D:\Python\Code\redditcrawl4.py'], shell=True)
 
     def unsubscribe_feed(self):
-        #should pop up a dialog box to confirm
         if self.node_id not in ['folder', 'reddfile']:
             confirm = QMessageBox.question(self, "Unsubscribe from feed?",
                      "This will unsubscribe you from the feed and delete all saved posts. Are you sure?",
