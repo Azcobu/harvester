@@ -63,9 +63,13 @@ class ReaderUI(QMainWindow):
         self.ui.webEngine.setPage(CustomWebEnginePage(self))
         self.ui.splitter.addWidget(self.ui.webEngine)
 
-        self.ui.buttonNextPage = QPushButton('>>')
+        self.ui.buttonNextPage = QPushButton('')
+        #self.ui.buttonNextPage.setIcon(QIcon(':/icons/icons/icons8-fast-forward-100.png'))
+        self.ui.buttonNextPage.setStyleSheet("border-image : url(:/icons/icons/icons8-fast-forward-100.png);")
         self.ui.labelPage = QLabel()
-        self.ui.buttonPrevPage = QPushButton('<<')
+        self.ui.buttonPrevPage = QPushButton('')
+        #self.ui.buttonPrevPage.setIcon(QIcon(':/icons/icons/icons8-rewind-100.png'))
+        self.ui.buttonPrevPage.setStyleSheet("border-image : url(:/icons/icons/icons8-rewind-100.png);")
 
         self.ui._search_panel = SearchPanel()
         self.ui.search_toolbar = QToolBar()
@@ -145,9 +149,9 @@ class ReaderUI(QMainWindow):
         self.ui.buttonPrevPage.clicked.connect(self.prev_page)
 
         #QQQQ
-        self.dl_icon = QIcon(r'd:\Dropbox\Python\icons-rss\icons8-download-100.png')
-        self.folder_icon = QIcon(r'd:\Dropbox\Python\icons-rss\icons8-folder-100.png')
-        self.update_icon = QIcon(r'd:\Dropbox\Python\icons-rss\icons8-right-arrow-100.png')
+        self.dl_icon = QIcon(':/icons/icons/icons8-download-100.png')
+        self.folder_icon = QIcon(':/icons/icons/icons8-folder-100.png')
+        self.update_icon = QIcon(':/icons/icons/icons8-right-arrow-100.png')
 
         self.ui.webEngine.page().linkHovered.connect(self.link_hover)
         self.ui.webEngine.loadFinished.connect(self.set_web_zoom)
@@ -364,7 +368,7 @@ class ReaderUI(QMainWindow):
         for f in self.folderlist:
             foldernode = QTreeWidgetItem(self.ui.treeMain, [f, 'folder'])
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
-            foldernode.setIcon(0, QIcon(r'd:\Dropbox\Python\icons-rss\icons8-folder-100.png'))
+            foldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
             self.ui.treeMain.addTopLevelItem(foldernode)
             for feed in self.feedlist:
                 if feed.folder == f:
@@ -376,13 +380,15 @@ class ReaderUI(QMainWindow):
                     fontweight = QFont.Bold if unread_count_str else False
                     newnode.setFont(0, QFont('Segoe UI', 10, fontweight))
                     if unread_count_str: # doesn't wrk due to style sheet
-                    #    newnode.setForeground(0, QtGui.QBrush(Qt.yellow))  # QtGui.QColor("blue")))
-                        newnode.setIcon(0, QIcon(r'd:\Dropbox\Python\icons-rss\icons8-newspaper-100.png'))
+                        #newnode.setForeground(0, QtGui.QBrush(Qt.yellow))  # QtGui.QColor("blue")))
+                        #newnode.setIcon(0, QIcon(':/icons/icons/icons8-file-100-3.png'))
+                        newnode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
 
         # add redd folder
         if self.redd_dir:
             foldernode = QTreeWidgetItem(self.ui.treeMain, ['ReddFiles', 'folder'])
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
+            foldernode.setIcon(0, QIcon(':/icons/icons/icons8-reddit-100-2.png'))
             reddfiles = listdir(self.redd_dir)
             for rf in reddfiles:
                 newnode = QTreeWidgetItem(foldernode, [f'{rf}', 'reddfile'])
@@ -648,6 +654,16 @@ class ReaderUI(QMainWindow):
     def handle_nextprev_buttons(self):
         self.ui.buttonNextPage.setDisabled(self.curr_page == self.max_page)
         self.ui.buttonPrevPage.setDisabled(self.curr_page == 1)
+
+        if self.curr_page == self.max_page:
+            self.ui.buttonNextPage.setStyleSheet("")
+        else:
+            self.ui.buttonNextPage.setStyleSheet("border-image : url(:/icons/icons/icons8-fast-forward-100.png);")
+
+        if self.curr_page == 1:
+            self.ui.buttonPrevPage.setStyleSheet("")
+        else:
+            self.ui.buttonPrevPage.setStyleSheet("border-image : url(:/icons/icons/icons8-rewind-100.png);")
 
     def new_folder(self):
         newfolder, ok = QInputDialog.getText(self, 'New Folder Name', 'Enter folder name:')

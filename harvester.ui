@@ -14,8 +14,8 @@
    <string>Harvester</string>
   </property>
   <property name="windowIcon">
-   <iconset>
-    <normaloff>:/icon/K:/Dropbox/Python/icons-rss/icons8-harvester-100.png</normaloff>:/icon/K:/Dropbox/Python/icons-rss/icons8-harvester-100.png</iconset>
+   <iconset resource="harvester.qrc">
+    <normaloff>:/icons/icons/icons8-combine-harvester-100-2.png</normaloff>:/icons/icons/icons8-combine-harvester-100-2.png</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
@@ -87,7 +87,7 @@
      <x>0</x>
      <y>0</y>
      <width>796</width>
-     <height>22</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -146,6 +146,8 @@
     <addaction name="actionUsage_Report"/>
     <addaction name="separator"/>
     <addaction name="actionOptions"/>
+    <addaction name="separator"/>
+    <addaction name="actionAbout_Harvester"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -154,6 +156,10 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSubscribe">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-add-file-100.png</normaloff>:/icons/icons/icons8-add-file-100.png</iconset>
+   </property>
    <property name="text">
     <string>Subscribe</string>
    </property>
@@ -167,6 +173,10 @@
    </property>
   </action>
   <action name="actionNew_Fold">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-folder-100.png</normaloff>:/icons/icons/icons8-folder-100.png</iconset>
+   </property>
    <property name="text">
     <string>New Folder</string>
    </property>
@@ -175,6 +185,10 @@
    </property>
   </action>
   <action name="actionImport_Feeds">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-file-100-5.png</normaloff>:/icons/icons/icons8-file-100-5.png</iconset>
+   </property>
    <property name="text">
     <string>Import Feeds</string>
    </property>
@@ -183,6 +197,10 @@
    </property>
   </action>
   <action name="actionExport_Feeds">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-file-100-4.png</normaloff>:/icons/icons/icons8-file-100-4.png</iconset>
+   </property>
    <property name="text">
     <string>Export Feeds</string>
    </property>
@@ -191,6 +209,10 @@
    </property>
   </action>
   <action name="actionDatabase_Maintenance">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-database-100.png</normaloff>:/icons/icons/icons8-database-100.png</iconset>
+   </property>
    <property name="text">
     <string>Database Maintenance</string>
    </property>
@@ -199,6 +221,10 @@
    </property>
   </action>
   <action name="actionExit">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-door-100.png</normaloff>:/icons/icons/icons8-door-100.png</iconset>
+   </property>
    <property name="text">
     <string>Exit</string>
    </property>
@@ -226,6 +252,10 @@
    </property>
   </action>
   <action name="actionFind_in_Page">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-binocular-100.png</normaloff>:/icons/icons/icons8-binocular-100.png</iconset>
+   </property>
    <property name="text">
     <string>Find in Page</string>
    </property>
@@ -237,6 +267,10 @@
    </property>
   </action>
   <action name="actionUpdate_All_Feeds">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-antenna-100-2.png</normaloff>:/icons/icons/icons8-antenna-100-2.png</iconset>
+   </property>
    <property name="text">
     <string>Update All Feeds</string>
    </property>
@@ -245,6 +279,10 @@
    </property>
   </action>
   <action name="actionUpdate_Current_Feed">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-antenna-100.png</normaloff>:/icons/icons/icons8-antenna-100.png</iconset>
+   </property>
    <property name="text">
     <string>Update Current Feed</string>
    </property>
@@ -253,6 +291,10 @@
    </property>
   </action>
   <action name="actionSearch_Feeds">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-magnifying-glass-100.png</normaloff>:/icons/icons/icons8-magnifying-glass-100.png</iconset>
+   </property>
    <property name="text">
     <string>Search Feeds</string>
    </property>
@@ -275,8 +317,8 @@
   </action>
   <action name="actionOptions">
    <property name="icon">
-    <iconset>
-     <normaloff>:/icon/K:/Dropbox/Python/icons-rss/icons8-settings-100.png</normaloff>:/icon/K:/Dropbox/Python/icons-rss/icons8-settings-100.png</iconset>
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-settings-100.png</normaloff>:/icons/icons/icons8-settings-100.png</iconset>
    </property>
    <property name="text">
     <string>Options</string>
@@ -331,6 +373,10 @@
    </property>
   </action>
   <action name="actionUpdate_Reddit">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-reddit-100-2.png</normaloff>:/icons/icons/icons8-reddit-100-2.png</iconset>
+   </property>
    <property name="text">
     <string>Update Reddit</string>
    </property>
@@ -347,6 +393,10 @@
    </property>
   </action>
   <action name="actionMost_Recent">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-news-100-3.png</normaloff>:/icons/icons/icons8-news-100-3.png</iconset>
+   </property>
    <property name="text">
     <string>Most Recent</string>
    </property>
@@ -355,6 +405,10 @@
    </property>
   </action>
   <action name="actionIncrease_Text_Size">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-zoom-in-100.png</normaloff>:/icons/icons/icons8-zoom-in-100.png</iconset>
+   </property>
    <property name="text">
     <string>Increase Text Size</string>
    </property>
@@ -363,6 +417,10 @@
    </property>
   </action>
   <action name="actionDecrease_Text_Size">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-zoom-out-100.png</normaloff>:/icons/icons/icons8-zoom-out-100.png</iconset>
+   </property>
    <property name="text">
     <string>Decrease Text Size</string>
    </property>
@@ -379,6 +437,10 @@
    </property>
   </action>
   <action name="actionCreate_Database">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-database-100-2.png</normaloff>:/icons/icons/icons8-database-100-2.png</iconset>
+   </property>
    <property name="text">
     <string>Create Database</string>
    </property>
@@ -387,6 +449,10 @@
    </property>
   </action>
   <action name="actionDelete_Older_Posts">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-broom-100.png</normaloff>:/icons/icons/icons8-broom-100.png</iconset>
+   </property>
    <property name="text">
     <string>Delete Older Posts</string>
    </property>
@@ -403,6 +469,10 @@
    </property>
   </action>
   <action name="actionUsage_Report">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-report-100-2.png</normaloff>:/icons/icons/icons8-report-100-2.png</iconset>
+   </property>
    <property name="text">
     <string>DB Space Usage Report</string>
    </property>
@@ -410,7 +480,18 @@
     <string>Show which feeds are taking up the most database space.</string>
    </property>
   </action>
+  <action name="actionAbout_Harvester">
+   <property name="icon">
+    <iconset resource="harvester.qrc">
+     <normaloff>:/icons/icons/icons8-combine-harvester-100-2.png</normaloff>:/icons/icons/icons8-combine-harvester-100-2.png</iconset>
+   </property>
+   <property name="text">
+    <string>About Harvester</string>
+   </property>
+  </action>
  </widget>
- <resources/>
+ <resources>
+  <include location="harvester.qrc"/>
+ </resources>
  <connections/>
 </ui>
