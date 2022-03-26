@@ -20,6 +20,7 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from harvester import Ui_MainWindow
 from harvsearch import Ui_frmSearch
 from harvnewsub import Ui_frmNewSub
+from functools import partial
 import rsslib
 import sqlitelib
 import breeze_resources
@@ -181,14 +182,35 @@ class ReaderUI(QMainWindow):
         action2 = menu.addAction(self.markReadAction)
         menu.addSeparator()
         #action = menu.addAction(f'{self.node_name} - {self.node_id}')
-        action3 = menu.addAction(self.updateFeedAction)
 
-        if self.node_id not in ['folder', 'reddfile']:
+        if self.node_id not in ['folder', 'reddfile']: # we are on an individual feed
+            curr_node = [x for x in self.feedlist if x.feed_id == self.node_id]
+            if curr_node:
+                curr_folder = curr_node[0].folder
+
+            action3 = menu.addAction(self.updateFeedAction)
             menu.addSeparator()
             action_1 = menu.addAction(self.unsubAction)
             action_2 = menu.addAction("Choice 2")
             action_3 = menu.addAction("Choice 3")
+            menu.addSeparator()
+
+            move_folder = menu.addMenu('Move to Folder')
+            for f in self.folderlist:
+                if f!= curr_folder:
+                    tmp_action = move_folder.addAction(f)
+                    tmp_action.triggered.connect(partial(self.move_to_folder, self.node_id, f))
+
         menu.exec_(self.ui.treeMain.mapToGlobal(position))
+
+    def move_to_folder(self, feed_id, folder_name):
+        print(f'Moving feed {feed_id} to {folder_name} folder.')
+        sqlitelib.update_feed_folder(feed_id, folder_name, self.db_curs, self.db_conn)
+        for x in self.feedlist:
+            if x.feed_id == feed_id:
+                x.folder = folder_name
+                break
+        self.setup_tree()
 
     def search_feed_names(self):
         srchtext = self.ui.lineSearch.text()

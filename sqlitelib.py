@@ -352,6 +352,16 @@ def usage_report(curs, conn, num_shown=10):
 def run_arbitrary_sql(query, curs, conn):
     curs.execute(query)
 
+def update_feed_folder(feed_id, new_folder, curs, conn):
+    q = 'UPDATE `feeds` SET `folder` = ? WHERE `id` = ?'
+    try:
+        curs.execute(q, (new_folder, feed_id))
+        conn.commit()
+    except Exception as err:
+        print(f'Error changing folder for {feed_id} - {err}')
+    else:
+        print(f'Changed folder for {feed_id} to {new_folder}.')
+
 def main():
     dbfile = 'd:\\tmp\\posts.db'
     curs, conn = connect_DB(dbfile)
@@ -378,7 +388,8 @@ def main():
     #print(count_filtered_unread('eco', curs, conn))
     #print(text_search('kryl', curs, conn, 50))  # kryl
     #print(list_feeds_over_post_count(400, curs, conn, True))
-    mass_delete_all_but_last_n(100, curs, conn)
+    #mass_delete_all_but_last_n(100, curs, conn)
+    update_feed_folder('http://esr.ibiblio.org', 'News', curs, conn)
 
 if __name__ == '__main__':
     main()
