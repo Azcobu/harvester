@@ -116,7 +116,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionSubscribe.triggered.connect(self.new_sub)
         self.ui.actionNew_Fold.triggered.connect(self.new_folder)
         #self.ui.actionDelete_Folder_2.triggered.connect(self.delete_folder)
-        #self.ui.actionImport_Feeds.triggered.connect(self.import_feeds)
+        self.ui.actionImport_Feeds.triggered.connect(self.import_feeds_from_opml)
         #self.ui.actionExport_Feeds.triggered.connect(self.export_feeds)
         self.ui.actionCreate_Database.triggered.connect(self.create_db)
         self.ui.actionLoad_Database.triggered.connect(self.menu_load_db)
@@ -311,14 +311,14 @@ class ReaderUI(QMainWindow):
         self.output(f'Loading DB file {db_filename}')
         db = sqlitelib.connect_DB(db_filename)
         while not db:
-            self.output(f'Attmpt to load DB file {db_filename} failed.')
+            self.output(f'Attempt to load DB file {db_filename} failed.')
             self.db_filename = None
-            self.locate_db()
+            db_filename = self.locate_db()
             db = sqlitelib.connect_DB(db_filename)
-        else:
-            self.db_curs, self.db_conn = db[0], db[1]
-            self.db_filename = db_filename
-            return True
+
+        self.db_curs, self.db_conn = db[0], db[1]
+        self.db_filename = db_filename
+        return True
 
     def load_db_dlg(self):
         dlg = QFileDialog.getOpenFileName(self, "Open Database", "", \
@@ -560,6 +560,15 @@ class ReaderUI(QMainWindow):
 
     def mark_read(self):
         self.output(f'Mark feed {self.node_name} - {self.node_id} read.')
+
+    def import_feeds_from_opml(self):
+        dlg = QFileDialog.getOpenFileName(self, "Open OPML File", "", \
+            "OPML Files (*.opml);;All files (*.*)")
+        if dlg[0] != '':
+            rsslib.export_opml_to_db(dlg[0], self.db_curs, self.db_conn)
+            self.setup_tree()
+            self.update_all_feeds()
+            self.setup_tree()
 
     def update_feed(self, feed=None):
         if not feed:

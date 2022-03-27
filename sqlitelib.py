@@ -26,6 +26,7 @@ class Post:
 
 def connect_DB(db_file):
     if not db_file or not path.exists(db_file):
+        print(f'DB file {db_file} could not be found.')
         return None
 
     try:
@@ -163,11 +164,8 @@ def write_feed(feed, curs=None, conn=None):
                  feed.html_url, str(feed.tags), feed.last_read))
     conn.commit()
 
-def write_feed_list(db_file, feedlist, curs=None, conn=None):
+def write_feed_list(feedlist, curs=None, conn=None):
     feedsql = []
-
-    if not curs:
-        curs, conn = connect_DB(db_file)
 
     for feed in feedlist:
         print(f'{feed}')

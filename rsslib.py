@@ -121,7 +121,10 @@ def parse_post(feed, postdata):
         else:
             if hasattr(postdata, 'updated'):
                 date = postdata['updated']
-        date = parse_date(date)
+        if date:
+            date = parse_date(date) #QQQQ and if neither is found?
+        else:
+            print('vfdvsddf')
 
         if hasattr(postdata, 'content'):
             content = postdata['content'][0]['value']
@@ -134,7 +137,7 @@ def parse_post(feed, postdata):
         return Post(p_id, feed.feed_id, title, author, url, date, content, 'None')
 
     except Exception as err:
-        print(f'Post parsing failed - {err}.')
+        print(f'Post parsing failed for feed {feed} - {err}.')
         errorlog.append(f'{err} - ' + str(postdata) + '\n\n')
 
 def retrieve_feed(feed, db_curs, db_conn):
@@ -169,9 +172,9 @@ def find_node(tree, flags, target):
     # should be feed ID column 1, but can't get that to work
     return tree.findItems(target, flags, 0)[0]
 
-def export_opml_to_db(opmlfile, db_file):
+def export_opml_to_db(opmlfile, db_curs, db_conn):
     feedlist = parse_opml(opmlfile)
-    sqlitelib.write_feed_list(db_file, feedlist)
+    sqlitelib.write_feed_list(feedlist, db_curs, db_conn)
 
 def import_feeds_from_db(db_curs, db_file):
     feedlist = sqlitelib.retrieve_feedlist(db_curs, db_file)
@@ -316,11 +319,11 @@ def main():
     #invfull = 'http://bhagpuss.blogspot.com/feeds/posts/default'
     #futclo = 'http://feeds.feedburner.com/FutilityCloset'
     #post = retrieve_feed(futclo)
-    #feedlist = parse_opml('d:\\tmp\\blw10.opml')
+    feedlist = parse_opml('d:\\tmp\\fd-subs.opml')
     #print(feedlist)
     #retrieve_feeds(feedlist)
     #save_error_log(errorlog)
-    export_opml_to_db('d:\\tmp\\blw10.opml', db_file)
+    #export_opml_to_db('d:\\tmp\\blw10.opml', db_file)
     #sd = 'https://erikhoel.substack.com'
     #k = validate_feed(sd)
     #print(k)
