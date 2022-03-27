@@ -11,7 +11,7 @@ from os import listdir, path, getcwd
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, QThread, pyqtSignal,
                          pyqtSlot)
-from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence
+from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap
 from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
                              QTreeWidgetItem, QMenu, QAction, QDialog, QProgressBar,
                              QLineEdit, QLabel, QMessageBox, QInputDialog, QWidget,
@@ -137,8 +137,13 @@ class ReaderUI(QMainWindow):
 
         # Tools
         self.ui.actionUpdate_All_Feeds.triggered.connect(self.update_all_feeds)
-        self.ui.actionSearch_Feeds.triggered.connect(self.search_feeds)
+        self.ui.actionUpdate_Current_Feed.triggered.connect(self.update_feed)
         self.ui.actionUpdate_Reddit.triggered.connect(self.update_reddit)
+        self.ui.actionSearch_Feeds.triggered.connect(self.search_feeds)
+        #DB usage report
+        #options
+        #About
+        self.ui.actionAbout_Harvester.triggered.connect(self.about_harv)
 
         #setup status bar
         self.ui.buttonPrevPage.setDisabled(True) #start with prev button disabled
@@ -148,7 +153,6 @@ class ReaderUI(QMainWindow):
         self.ui.buttonNextPage.clicked.connect(self.next_page)
         self.ui.buttonPrevPage.clicked.connect(self.prev_page)
 
-        #QQQQ
         self.dl_icon = QIcon(':/icons/icons/icons8-download-100.png')
         self.folder_icon = QIcon(':/icons/icons/icons8-folder-100.png')
         self.update_icon = QIcon(':/icons/icons/icons8-right-arrow-100.png')
@@ -546,7 +550,8 @@ class ReaderUI(QMainWindow):
         newsubform = NewSubDialog(self)
         if newsubform.exec():
             newsub = newsubform.get_inputs()
-            self.ui.statusbar.showMessage(f'Adding new subscription: {newsub.title} - {newsub.rss_url} to folder {newsub.folder}')
+            self.ui.statusbar.showMessage(f'Adding new subscription: {newsub.title} - '
+                                          f'{newsub.rss_url} to folder {newsub.folder}')
             sqlitelib.write_feed(newsub, self.db_curs, self.db_conn)
             self.update_feed(newsub)
             self.load_feed_data()
@@ -682,6 +687,22 @@ class ReaderUI(QMainWindow):
             else:
                 self.ui.statusbar.showMessage(f'')
         self.ui.webEngine.findText(text, flag, callback)
+
+    def about_harv(self):
+        #Information page for the program
+        about = QMessageBox(self)
+        about.setWindowTitle("About Harvester")
+        about.setTextFormat(Qt.RichText)
+        about.setIconPixmap(QPixmap(':/icons/icons/icons8-combine-harvester-100-2.png'))
+        about.setText('<h4>Harvester 0.1</h4>A cross-platform RSS reader.<p style="margin-bottom: -20px;">Credits:'
+                      '<ul style="margin-left: -30px; margin-top: -20px;">'
+                      '<li>Icons from <a href="https://icons8.com">Icons8</a>'
+                      '<li>Dark theme is <a href="https://github.com/ColinDuquesnoy/'
+                      'QDarkStyleSheet">QDarkStylesheet</a></ul>')
+        about.setStandardButtons(QMessageBox.Ok)
+        about.setDefaultButton(QMessageBox.Ok)
+        about.exec_()
+        about.deleteLater()
 
 #=========================================================================
 
