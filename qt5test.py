@@ -88,6 +88,7 @@ class ReaderUI(QMainWindow):
         self.ui.treeMain.setMouseTracking(True)
         self.ui.treeMain.itemClicked.connect(self.tree_click)
         self.ui.treeMain.itemEntered.connect(self.tree_hover)
+        self.ui.treeMain.itemExpanded.connect(lambda node: self.collapse_other_folders(node))
         self.ui.treeMain.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.treeMain.customContextMenuRequested.connect(self.tree_context_menu)
 
@@ -339,6 +340,7 @@ class ReaderUI(QMainWindow):
         self.load_db_file(fname)
         self.load_feed_data()
         self.setup_tree()
+        self.curr_page = 1
         self.view_most_recent()
 
     def locate_reddit_dir(self, skip_query=True):
@@ -433,7 +435,6 @@ class ReaderUI(QMainWindow):
     def exit_app(self):
         self.output('Exiting app...')
         self.close()
-        #sys.exit(0)
 
     def create_db(self):
         try:
@@ -442,10 +443,11 @@ class ReaderUI(QMainWindow):
                 new_db = dlg[0]
         except Exception as err:
             self.output(f'{err}')
-        if sqlitelib.create_DB(new_db):
-            self.db_filename = new_db
-            self.db_curs, self.db_conn = sqlitelib.connect_DB(new_db)
-            return self.db_filename
+        if new_db:
+            if sqlitelib.create_DB(new_db):
+                self.db_filename = new_db
+                self.db_curs, self.db_conn = sqlitelib.connect_DB(new_db)
+                return self.db_filename
 
     def tree_click(self):
         #QQQQ also needs to update page controls, as max_page doesn't seem to update
@@ -489,6 +491,13 @@ class ReaderUI(QMainWindow):
                 except Exception as err:
                     self.output(f'Error - failed to update read status of {node_title}: {err}')
 
+    def collapse_other_folders(self, curr_node):
+        root = self.ui.treeMain.invisibleRootItem()
+        for x in range(root.childCount()):
+            node = root.child(x)
+            if node.text(1) == 'folder' and node != curr_node:
+                node.setExpanded(False)
+
     def tree_hover(self, item):
         if item.text(1) != 'folder':
             self.ui.statusbar.showMessage(f'{item.text(0)} - {item.text(1)}')
@@ -496,6 +505,8 @@ class ReaderUI(QMainWindow):
     def view_most_recent(self, num=100):
         self.output(f'Showing {num} most recent posts.')
         startposts = sqlitelib.get_most_recent(num, self.db_curs, self.db_conn)
+        if not startposts:
+            self.results = []
         posthtml = self.generate_posts_page(startposts)
         self.ui.webEngine.setHtml(posthtml)
 
@@ -562,6 +573,7 @@ class ReaderUI(QMainWindow):
         self.output(f'Mark feed {self.node_name} - {self.node_id} read.')
 
     def import_feeds_from_opml(self):
+        # QQQQ should check for duplicate feeds
         dlg = QFileDialog.getOpenFileName(self, "Open OPML File", "", \
             "OPML Files (*.opml);;All files (*.*)")
         if dlg[0] != '':
@@ -625,6 +637,7 @@ class ReaderUI(QMainWindow):
         startpost = (self.curr_page - 1) * self.page_size
         endpost = self.curr_page * self.page_size
         self.max_page = int(len(results) / self.page_size) + (len(results) % self.page_size > 0)
+        self.max_page = max(self.max_page, 1)
         self.handle_nextprev_buttons()
         results = results[startpost:endpost]
 
@@ -642,6 +655,8 @@ class ReaderUI(QMainWindow):
                             f'</div><hr class="new">')
         else:
             page.append('<h4>No results found.</h4>')
+            self.curr_page = 0
+            self.handle_nextprev_buttons()
         page.append('</body></html>')
 
         page = ''.join(page)
@@ -685,6 +700,7 @@ class ReaderUI(QMainWindow):
             print(str(newfolder))
             newfoldernode = QTreeWidgetItem(self.ui.treeMain, [newfolder, 'folder'])
             newfoldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
+            newfoldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
             self.folderlist.append(newfolder)
             self.folderlist = sorted(self.folderlist)
 
@@ -759,7 +775,8 @@ class NewSubDialog(QDialog):
 
         #populate listbox
         self.ui.listNewSubFolders.addItems(parent.folderlist)
-        self.ui.listNewSubFolders.item(0).setSelected(True)
+        if self.ui.listNewSubFolders.count() > 0:
+            self.ui.listNewSubFolders.item(0).setSelected(True)
 
         # Connect up the buttons
         self.ui.btnNewSubCheck.clicked.connect(self.check_button)
@@ -772,20 +789,23 @@ class NewSubDialog(QDialog):
     def check_button(self):
         feed_url = self.ui.lineNewSubFeedUrl.text()
         if feed_url:
-            self.ui.lblFeedValid.setText('Checking feed...')
-            self.ui.lblFeedValid.repaint()
-            results = rsslib.validate_feed(feed_url)
-            if type(results) == rsslib.Feed:
-                if results.title not in [x.title for x in self.parent.feedlist]:
+            if feed_url not in [x.rss_url for x in self.parent.feedlist]:
+                self.ui.lblFeedValid.setText('Checking feed...')
+                self.ui.lblFeedValid.repaint()
+                results = rsslib.validate_feed(feed_url)
+                if type(results) == rsslib.Feed:
+                    #if results.title not in [x.title for x in self.parent.feedlist]:
                     self.feed = results
                     self.ui.lineNewSubFeedUrl.setText(results.rss_url)
                     self.ui.lblFeedValid.setText('Feed is valid.')
                     self.ui.lineNewSubTitle.setText(results.title)
                     self.ui.btnNewSubOK.setDisabled(False)
+                    #else:
+                    #    self.ui.lblFeedValid.setText('Duplicate feed title.')
                 else:
-                    self.ui.lblFeedValid.setText('Subscription already exists.')
+                    self.ui.lblFeedValid.setText('Feed URL is invalid.')
             else:
-                self.ui.lblFeedValid.setText('Feed URL is invalid.')
+                self.ui.lblFeedValid.setText('Subscription already exists.')
 
     def ok_button(self):
         self.accept()
@@ -794,7 +814,15 @@ class NewSubDialog(QDialog):
         self.reject()
 
     def get_inputs(self):
-        self.feed.folder = self.ui.listNewSubFolders.currentItem().text()
+        if self.ui.listNewSubFolders.count() > 0:
+            if not self.ui.listNewSubFolders.currentItem():
+                self.ui.listNewSubFolders.setCurrentRow(0)
+            self.feed.folder = self.ui.listNewSubFolders.currentItem().text()
+        else:
+            self.feed.folder = 'Uncategorised Feeds'
+
+        self.feed.title = self.ui.lineNewSubTitle.text()
+
         return self.feed
 
     def edit_feed_url(self):

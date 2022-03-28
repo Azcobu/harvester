@@ -123,8 +123,7 @@ def parse_post(feed, postdata):
                 date = postdata['updated']
         if date:
             date = parse_date(date) #QQQQ and if neither is found?
-        else:
-            print('vfdvsddf')
+        #else?
 
         if hasattr(postdata, 'content'):
             content = postdata['content'][0]['value']
@@ -147,12 +146,15 @@ def retrieve_feed(feed, db_curs, db_conn):
 
     if parsedfeed.entries:
         for p in parsedfeed.entries:
-            newpost = parse_post(feed, p)
-            if newpost:
-                newpost.strip_image_tags()
-                #print(newpost.title)
-                postlist.append(newpost)
-                #sqlitelib.write_post('d:\\tmp\\posts.db', newpost)
+            try:
+                newpost = parse_post(feed, p)
+            except Exception as err:
+                print(f'Parsing of post {p} failed - {err}.')
+            else:
+                if newpost:
+                    newpost.strip_image_tags()
+                    #print(newpost.title)
+                    postlist.append(newpost)
         sqlitelib.write_post_list(postlist, db_curs, db_conn)
     else:
         print(f'No posts found for {feed.title}')
