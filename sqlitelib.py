@@ -324,13 +324,12 @@ def mass_delete_all_but_last_n(keepnum, curs, conn):
         delete_all_but_last_n(f, keepnum, curs, conn)
     vacuum(conn)
 
-def list_feeds_over_post_count(maxposts, curs, conn, output=False):
-    q = '''SELECT p.feed_id, COUNT(p.id) FROM `posts` p GROUP BY p.feed_id
-           HAVING COUNT(p.id) > ? ORDER BY COUNT(p.id) DESC;'''
+def list_feeds_over_post_count(maxposts, curs, conn, report=False):
+    q = ('SELECT f.id, f.title, COUNT(p.id) FROM `posts` p JOIN `feeds` f ON f.id = p.feed_id '
+         'GROUP BY p.feed_id HAVING count(p.id) > ? ORDER BY COUNT(p.id) DESC;')
     curs.execute(q, (maxposts,))
-    if output:
-        for num, x in enumerate(curs.fetchall()):
-            print(f'{num+1}. Feed: {x[0]} - {x[1]} posts.')
+    if report:
+        return {x[1]:x[2] for x in curs.fetchall()}
     else:
         return [x[0] for x in curs.fetchall()]
 
@@ -339,15 +338,17 @@ def count_posts(feed_id, curs, conn):
     curs.execute(q, (feed_id,))
     return curs.fetchall()[0][0]
 
-def usage_report(curs, conn, num_shown=10):
-    q = 'SELECT feed_id, sum(length(content)) AS cl FROM `posts` GROUP BY feed_id ORDER BY cl DESC;'
-    curs.execute(q)
-    results = curs.fetchall()
-    print('DB Usage Report:')
-    for x in range(num_shown):
-        print(f'{results[x][0]} - {results[x][1]}')
+def usage_report(curs, conn, num_shown=20):
+    usage = {}
+    q = ('SELECT f.title, sum(length(content)) AS cl FROM `posts` p JOIN `feeds` f '
+        'ON f.id = p.feed_id GROUP BY feed_id ORDER BY cl DESC LIMIT ?;')
+    curs.execute(q, (num_shown,))
+    for x in curs.fetchall():
+        usage[x[0]] = x[1]
+    return usage
 
 def run_arbitrary_sql(query, curs, conn):
+    print(f'Running command: {query}')
     curs.execute(query)
 
 def update_feed_folder(feed_id, new_folder, curs, conn):
@@ -382,12 +383,12 @@ def main():
     #lrd = find_date_last_read(feed_id, curs, conn)
     #k = find_date_all_feeds_last_read(curs, conn)
     #print(k)
-    #usage_report(curs, conn)
+    #print(usage_report(curs, conn))
     #print(count_filtered_unread('eco', curs, conn))
     #print(text_search('kryl', curs, conn, 50))  # kryl
     #print(list_feeds_over_post_count(400, curs, conn, True))
     #mass_delete_all_but_last_n(100, curs, conn)
-    update_feed_folder('http://esr.ibiblio.org', 'News', curs, conn)
+    #update_feed_folder('http://esr.ibiblio.org', 'News', curs, conn)
 
 if __name__ == '__main__':
     main()

@@ -5,6 +5,7 @@
 # create dict for last read post date - also needs to fill in for feeds with no posts read
 # automatic download on sartup, and X minutes thereafter?
 # DB maintenance - if > 50 unread posts, start culling?
+# another report for out-of-date feeds might be handy.
 
 import sys
 from os import listdir, path, getcwd
@@ -142,8 +143,8 @@ class ReaderUI(QMainWindow):
         self.ui.actionUpdate_Reddit.triggered.connect(self.update_reddit)
         self.ui.actionSearch_Feeds.triggered.connect(self.search_feeds)
         #DB usage report
+        self.ui.actionUsage_Report.triggered.connect(self.usage_report)
         #options
-        #About
         self.ui.actionAbout_Harvester.triggered.connect(self.about_harv)
 
         #setup status bar
@@ -191,8 +192,10 @@ class ReaderUI(QMainWindow):
         self.output(f'Clicked on {self.node_name}')
 
         menu = QMenu()
-        action1 = menu.addAction(self.newSubAction)
+        menu.addAction(self.newSubAction)
         self.newSubAction.setStatusTip("Subscribe to a new RSS feed.")
+        menu.addAction(self.ui.actionNew_Fold)
+        self.ui.actionNew_Fold.setStatusTip("Create a new folder to store feeds in.")
 
         if self.node_id not in ['folder', 'reddfile']: # we are on an individual feed
             menu.addSeparator()
@@ -207,20 +210,22 @@ class ReaderUI(QMainWindow):
             menu.addSeparator()
             menu.addAction(self.unsubAction)
             self.unsubAction.setStatusTip("Unsubscribe from the current feed.")
-            menu.addAction("Choice 2")
-            menu.addAction("Choice 3")
+            #menu.addAction("Choice 2")
+            #menu.addAction("Choice 3")
             menu.addSeparator()
-
-            menu.addAction(self.ui.actionNew_Fold)
-            self.ui.actionNew_Fold.setStatusTip("Create a new folder to store feeds in.")
 
             move_folder = menu.addMenu('Move to Folder')
             move_folder.hovered.connect(self.movefolder)
 
-            for f in self.folderlist:
+            folder_options = self.folderlist
+            for f in folder_options:
                 if f != curr_node.folder:
                     tmp_action = move_folder.addAction(f)
                     tmp_action.triggered.connect(partial(self.move_to_folder, curr_node, f))
+            if curr_node.folder != None and curr_node.folder != '':
+                sep = move_folder.addSeparator()
+                no_folder = move_folder.addAction('None (remove from current folder)')
+                no_folder.triggered.connect(partial(self.move_to_folder, curr_node, None))
 
         menu.exec_(self.ui.treeMain.mapToGlobal(position))
 
@@ -358,7 +363,7 @@ class ReaderUI(QMainWindow):
     def load_feed_data(self):
         self.feedlist = rsslib.import_feeds_from_db(self.db_curs, self.db_conn)
         # find all folders
-        self.folderlist = set([x.folder for x in self.feedlist])
+        self.folderlist = set([x.folder for x in self.feedlist if x.folder not in [None, '']])
         self.folderlist = sorted(self.folderlist)
 
     def setup_tree(self):
@@ -375,20 +380,22 @@ class ReaderUI(QMainWindow):
             foldernode = QTreeWidgetItem(self.ui.treeMain, [f, 'folder'])
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
-            self.ui.treeMain.addTopLevelItem(foldernode)
-            for feed in self.feedlist:
-                if feed.folder == f:
-                    if feed.feed_id in unread_count:
-                        unread_count_str = f' ({unread_count[feed.feed_id]})'
-                    else:
-                        unread_count_str = ''
-                    newnode = QTreeWidgetItem(foldernode, [f'{feed.title}{unread_count_str}', feed.feed_id])
-                    fontweight = QFont.Bold if unread_count_str else False
-                    newnode.setFont(0, QFont('Segoe UI', 10, fontweight))
-                    if unread_count_str: # doesn't wrk due to style sheet
-                        #newnode.setForeground(0, QtGui.QBrush(Qt.yellow))  # QtGui.QColor("blue")))
-                        #newnode.setIcon(0, QIcon(':/icons/icons/icons8-file-100-3.png'))
-                        newnode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
+            for feed in [x for x in self.feedlist if x.folder == f]:
+                unread_count_str = f' ({unread_count[feed.feed_id]})' if feed.feed_id in unread_count else ''
+                newnode = QTreeWidgetItem(foldernode, [f'{feed.title}{unread_count_str}', feed.feed_id])
+                fontweight = QFont.Bold if unread_count_str else False
+                newnode.setFont(0, QFont('Segoe UI', 10, fontweight))
+                if unread_count_str:
+                    newnode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
+
+        # add folderless feeds?
+        for feed in [x for x in self.feedlist if x.folder in [None, '']]:
+            unread_count_str = f' ({unread_count[feed.feed_id]})' if feed.feed_id in unread_count else ''
+            newnode = QTreeWidgetItem(self.ui.treeMain, [f'{feed.title}{unread_count_str}', feed.feed_id])
+            fontweight = QFont.Bold if unread_count_str else False
+            newnode.setFont(0, QFont("Segoe UI", 10, fontweight))
+            if unread_count_str: # doesn't work due to style sheet
+                    newnode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
 
         # add redd folder
         if self.redd_dir:
@@ -475,6 +482,7 @@ class ReaderUI(QMainWindow):
             self.setWindowTitle(f'{self.version_str} - {node_title}')
             try:
                 results = sqlitelib.get_feed_posts(node_id, self.db_curs, self.db_conn)
+                self.results = results
             except Exception as err:
                 self.output(err)
             posthtml = self.generate_posts_page(results)
@@ -556,8 +564,7 @@ class ReaderUI(QMainWindow):
         DB_thread.start()
 
     def new_sub(self):
-        # should verify url if possible, then add the feed to the DB,
-        # load posts from the feed and refresh the tree.
+        # QQQQ should probably use threading for instances where other DB activity is happening
         newsubform = NewSubDialog(self)
         if newsubform.exec():
             newsub = newsubform.get_inputs()
@@ -713,6 +720,45 @@ class ReaderUI(QMainWindow):
                 self.ui.statusbar.showMessage(f'')
         self.ui.webEngine.findText(text, flag, callback)
 
+    def format_filesize_str(self, fsize):
+        if fsize > 10**6:
+            return f'{round(fsize / 1024 ** 2, 2):,} MB'
+        else:
+            return f'{round(fsize / 1024):,} KB'
+
+    def usage_report(self):
+        # make feed names clickable?
+        # add more stats? Total DB size
+        report = sqlitelib.usage_report(self.db_curs, self.db_conn)
+        page = ['<!DOCTYPE html><html><head>']
+        if style := load_css_file():
+            page.append('<style>' + style + '</style>')
+
+        db_size = self.format_filesize_str(path.getsize(self.db_filename))
+
+        page.append(f'<b>Total database size:</b> {db_size}.<p>')
+        page.append(f'<b>Total feeds:</b> {len(self.feedlist)}<p><hr>')
+
+        page.append('</head><body><h3>Database Usage Report</h3>'
+                    '<table><tr><td>#</td><td><b><u>Feed Name</u></b></td><td><b><u>Space Used</u></b></td></tr>')
+        for num, k in enumerate(report.items()):
+            size = self.format_filesize_str(k[1])
+            page.append(f'<tr><td>{num+1}.</td><td>{k[0]}</td><td>{size}</td></tr>')
+        page.append('</table><p><hr>')
+
+        postsrep = sqlitelib.list_feeds_over_post_count(100, self.db_curs, self.db_conn, True)
+        page.append('<h3>Feeds With >100 Posts</h3>'
+                     '<table><tr><td>#</td><td><b><u>Feed Name</u></b></td><td><b><u>Post Count</u></b></td></tr>')
+        for num, k in enumerate(postsrep.items()):
+            page.append(f'<tr><td>{num+1}.</td><td>{k[0]}</td><td>{k[1]}</td></tr>')
+        page.append('</table>')
+
+        page = ''.join(page)
+        self.ui.webEngine.setHtml(page)
+        self.curr_page, self.max_page = 1, 1
+        self.ui.labelPage.setText(f'Page 1 of 1')
+        self.handle_nextprev_buttons()
+
     def about_harv(self):
         #Information page for the program
         about = QMessageBox(self)
@@ -819,7 +865,7 @@ class NewSubDialog(QDialog):
                 self.ui.listNewSubFolders.setCurrentRow(0)
             self.feed.folder = self.ui.listNewSubFolders.currentItem().text()
         else:
-            self.feed.folder = 'Uncategorised Feeds'
+            self.feed.folder = None
 
         self.feed.title = self.ui.lineNewSubTitle.text()
 
