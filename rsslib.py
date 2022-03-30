@@ -58,35 +58,40 @@ def open_opml_file(infile):
 
 def parse_opml(infile):
     #p_id, feed_id, title, folder, f_type, rss_url, html_url, tags=[], last_read, favicon)
+    # needs to distinguish between folders and top-level folderless feeds
     currfolder = ''
     feedlist = opml.parse(infile)
-    #feeds = {}
-    feeds = []
+    folder_feeds, folderless_feeds = [], []
 
     for x in range(len(feedlist)):
-        currfolder = feedlist[x].text
-        #feeds[currfolder] = []
-        for y in range(len(feedlist[x])):
-            data = feedlist[x][y]
+        if not hasattr(feedlist[x], 'xmlUrl'): # this is a folder
+            currfolder = feedlist[x].text
+            for y in range(len(feedlist[x])):
+                data = feedlist[x][y]
+                try:
+                    if hasattr(data, 'htmlUrl'):
+                        newfeed = Feed(data.htmlUrl, data.title, currfolder, data.type,
+                                       data.xmlUrl, data.htmlUrl)
+                    else: # html link not in feed data, so fall back to xml url
+                        newfeed = Feed(data.xmlUrl, data.title, currfolder, data.type,
+                                       data.xmlUrl, data.xmlUrl)
+                except Exception as err:
+                    print(f'Error parsing {data} - {err}')
+                else:
+                    folder_feeds.append(newfeed)
+        else: #folderless feed
+            data = feedlist[x]
             try:
-                if hasattr(data, 'htmlUrl'):
-                    newfeed = Feed(data.htmlUrl, data.title, currfolder, data.type,
-                                   data.xmlUrl, data.htmlUrl)
-                else: # html link not in feed data, so fall back to xml url
-                    newfeed = Feed(data.xmlUrl, data.title, currfolder, data.type,
-                                   data.xmlUrl, data.xmlUrl)
+                newfeed = Feed(data.htmlUrl, data.title, None, data.type,
+                               data.xmlUrl, data.htmlUrl)
             except Exception as err:
                 print(f'Error parsing {data} - {err}')
             else:
-                feeds.append(newfeed)
-            #if hasattr(data, 'htmlUrl'):
-                #print(' - ' + data.text + ' - ' + data.htmlUrl)
-                #feeds[currfolder].append(data.title)
-                #feed_urls.append(data.xmlUrl)  #htmlUrl
+                folderless_feeds.append(newfeed)
 
-    feeds.sort(key = lambda x: (x.folder, x.title))
-    #print(feeds)
-    return feeds
+    folder_feeds.sort(key = lambda x: (x.folder, x.title))
+    folderless_feeds.sort(key = lambda x: x.title)
+    return folder_feeds + folderless_feeds
 
 def parse_date(indate):
     try:
@@ -174,13 +179,25 @@ def find_node(tree, flags, target):
     # should be feed ID column 1, but can't get that to work
     return tree.findItems(target, flags, 0)[0]
 
-def export_opml_to_db(opmlfile, db_curs, db_conn):
-    feedlist = parse_opml(opmlfile)
-    sqlitelib.write_feed_list(feedlist, db_curs, db_conn)
+def import_opml_to_db(opmlfile, curr_feeds, db_curs, db_conn):
+    trimfeeds = []
+    dupes = 0
+    already_subbed = set([x.feed_id for x in curr_feeds])
+    for x in parse_opml(opmlfile):
+        if x.feed_id in already_subbed:
+            print(f'Already subscribed to feed {x}, skipping import.')
+            dupes += 1
+        else:
+            trimfeeds.append(x)
+    sqlitelib.write_feed_list(trimfeeds, db_curs, db_conn)
+    return len(trimfeeds), dupes
 
 def import_feeds_from_db(db_curs, db_file):
     feedlist = sqlitelib.retrieve_feedlist(db_curs, db_file)
     return sorted(feedlist, key=lambda x:x.title.capitalize())
+
+def export_feeds_to_opml(feedlist):
+    pass
 
 def worker(listsize, workernum, q, DB_queue, mainwin=None, flags=None, upicon=None):
     # QQQQ should update the tree items with new font and number of new posts too
@@ -321,7 +338,7 @@ def main():
     #invfull = 'http://bhagpuss.blogspot.com/feeds/posts/default'
     #futclo = 'http://feeds.feedburner.com/FutilityCloset'
     #post = retrieve_feed(futclo)
-    feedlist = parse_opml('d:\\tmp\\fd-subs.opml')
+    feedlist = parse_opml('d:\\tmp\\folderless.opml')
     #print(feedlist)
     #retrieve_feeds(feedlist)
     #save_error_log(errorlog)

@@ -103,12 +103,14 @@ class ReaderUI(QMainWindow):
         self.markReadAction = QAction("Mark Read", self)
         self.updateFeedAction = QAction("&Update Feed", self)
         self.unsubAction = QAction("Unsubscribe", self)
+        self.feedProperties = QAction('View Feed Properies', self)
 
         #connect actions
         self.newSubAction.triggered.connect(self.new_sub)
         self.markReadAction.triggered.connect(self.mark_read)
         self.updateFeedAction.triggered.connect(self.update_feed)
         self.unsubAction.triggered.connect(self.unsubscribe_feed)
+        self.feedProperties.triggered.connect(self.view_feed_properties)
 
         # search box
         self.ui.lineSearch.textChanged.connect(self.search_feed_names)
@@ -119,7 +121,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionNew_Fold.triggered.connect(self.new_folder)
         #self.ui.actionDelete_Folder_2.triggered.connect(self.delete_folder)
         self.ui.actionImport_Feeds.triggered.connect(self.import_feeds_from_opml)
-        #self.ui.actionExport_Feeds.triggered.connect(self.export_feeds)
+        self.ui.actionExport_Feeds.triggered.connect(self.export_feeds_to_opml)
         self.ui.actionCreate_Database.triggered.connect(self.create_db)
         self.ui.actionLoad_Database.triggered.connect(self.menu_load_db)
         #self.ui.actionDelete_Older_Posts.triggered.connect(self.delete_older_posts)
@@ -142,7 +144,6 @@ class ReaderUI(QMainWindow):
         self.ui.actionUpdate_Current_Feed.triggered.connect(self.update_feed)
         self.ui.actionUpdate_Reddit.triggered.connect(self.update_reddit)
         self.ui.actionSearch_Feeds.triggered.connect(self.search_feeds)
-        #DB usage report
         self.ui.actionUsage_Report.triggered.connect(self.usage_report)
         #options
         self.ui.actionAbout_Harvester.triggered.connect(self.about_harv)
@@ -199,17 +200,17 @@ class ReaderUI(QMainWindow):
 
         if self.node_id not in ['folder', 'reddfile']: # we are on an individual feed
             menu.addSeparator()
+            menu.addAction(self.updateFeedAction)
+            self.updateFeedAction.setStatusTip("Update the current feed.")
             menu.addAction(self.markReadAction)
             self.markReadAction.setStatusTip("Mark current feed as read.")
-            menu.addSeparator()
+            menu.addAction(self.unsubAction)
+            self.unsubAction.setStatusTip("Unsubscribe from the current feed.")
+            menu.addAction(self.feedProperties)
 
             curr_node = [x for x in self.feedlist if x.feed_id == self.node_id][0]
 
-            menu.addAction(self.updateFeedAction)
-            self.updateFeedAction.setStatusTip("Update the current feed.")
-            menu.addSeparator()
-            menu.addAction(self.unsubAction)
-            self.unsubAction.setStatusTip("Unsubscribe from the current feed.")
+
             #menu.addAction("Choice 2")
             #menu.addAction("Choice 3")
             menu.addSeparator()
@@ -230,7 +231,7 @@ class ReaderUI(QMainWindow):
         menu.exec_(self.ui.treeMain.mapToGlobal(position))
 
     def move_to_folder(self, feed, folder_name):
-        print(f'Moving feed {feed.feed_id} to {folder_name} folder.')
+        self.output(f'Moving feed {feed.feed_id} to {folder_name} folder.')
         sqlitelib.update_feed_folder(feed.feed_id, folder_name, self.db_curs, self.db_conn)
         feed.folder = folder_name
         self.setup_tree()
@@ -324,7 +325,6 @@ class ReaderUI(QMainWindow):
 
         self.db_curs, self.db_conn = db[0], db[1]
         self.db_filename = db_filename
-        return True
 
     def load_db_dlg(self):
         dlg = QFileDialog.getOpenFileName(self, "Open Database", "", \
@@ -444,6 +444,7 @@ class ReaderUI(QMainWindow):
         self.close()
 
     def create_db(self):
+        # QQQQ offer to add sample feeds to new DB
         try:
             dlg = QFileDialog.getSaveFileName(self, "Create New Database")
             if dlg:
@@ -454,6 +455,20 @@ class ReaderUI(QMainWindow):
             if sqlitelib.create_DB(new_db):
                 self.db_filename = new_db
                 self.db_curs, self.db_conn = sqlitelib.connect_DB(new_db)
+
+                loadnew = QMessageBox.question(self, "Load new DB?",
+                          "Would you like to load the new database?",
+                          QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+                if loadnew == QMessageBox.Yes:
+
+                    load_sample = QMessageBox.question(self, "Import Sample Feeds?",
+                                  "Would you like to add some sample feeds to the "
+                                  "new database? If not, the new database will be empty.",
+                                  QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+                    if load_sample == QMessageBox.Yes:
+                        #new, dupes = rsslib.import_opml_to_db(dlg[0], self.feedlist, self.db_curs, self.db_conn)
+                        pass
+                    self.load_db_file(self.db_filename)
                 return self.db_filename
 
     def tree_click(self):
@@ -584,10 +599,41 @@ class ReaderUI(QMainWindow):
         dlg = QFileDialog.getOpenFileName(self, "Open OPML File", "", \
             "OPML Files (*.opml);;All files (*.*)")
         if dlg[0] != '':
-            rsslib.export_opml_to_db(dlg[0], self.db_curs, self.db_conn)
+            new, dupes = rsslib.import_opml_to_db(dlg[0], self.feedlist, self.db_curs, self.db_conn)
+            self.load_feed_data()
             self.setup_tree()
             self.update_all_feeds()
             self.setup_tree()
+            self.ui.statusbar.showMessage(f'Imported {new} new feeds and skipped {dupes} duplicates.')
+
+    def export_feeds_to_opml(self):
+        fname = 'd:\\tmp\\opml-export.opml'
+        opml = []
+
+        timestr = datetime.now().strftime('%a, %d %b %Y %I:%M:%S %p %Z')
+        opml.append('<opml version="1.1">\n\t<head>\n\t\t<title>Harvester Subscriptions</title>\n\t\t'
+                    f'<dateModified>{timestr}</dateModified>\n\t</head>\n\t<body>\n')
+        for folder in self.folderlist:
+            opml.append(f'\t\t<outline text="{folder}">\n')
+            for feed in [x for x in self.feedlist if x.folder == folder]:
+                opml.append(f'\t\t\t<outline text="{feed.title}" title="{feed.title}" '
+                            f'type="{feed.f_type}" xmlUrl="{feed.rss_url}" '
+                            f'htmlUrl="{feed.html_url}"/>\n')
+            opml.append('\t\t</outline>\n')
+
+        # folderless feeds
+        for feed in [x for x in self.feedlist if x.folder in [None, '']]:
+            opml.append(f'\t\t<outline text="{feed.title}" title="{feed.title}" '
+                        f'type="{feed.f_type}" xmlUrl="{feed.rss_url}" '
+                        f'htmlUrl="{feed.html_url}"/>\n')
+
+        opml.append('\t</body>\n</opml>')
+
+        opml = ''.join(opml)
+        with open(fname, 'w') as outfile:
+            outfile.write(opml)
+
+        self.ui.statusbar.showMessage(f'Feeds exported to file {fname}.')
 
     def update_feed(self, feed=None):
         if not feed:
@@ -704,7 +750,7 @@ class ReaderUI(QMainWindow):
     def new_folder(self):
         newfolder, ok = QInputDialog.getText(self, 'New Folder Name', 'Enter folder name:')
         if ok:
-            print(str(newfolder))
+            #print(str(newfolder))
             newfoldernode = QTreeWidgetItem(self.ui.treeMain, [newfolder, 'folder'])
             newfoldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
             newfoldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
@@ -721,26 +767,28 @@ class ReaderUI(QMainWindow):
         self.ui.webEngine.findText(text, flag, callback)
 
     def format_filesize_str(self, fsize):
-        if fsize > 10**6:
+        if fsize > 10 ** 6:
             return f'{round(fsize / 1024 ** 2, 2):,} MB'
         else:
             return f'{round(fsize / 1024):,} KB'
 
     def usage_report(self):
         # make feed names clickable?
-        # add more stats? Total DB size
         report = sqlitelib.usage_report(self.db_curs, self.db_conn)
         page = ['<!DOCTYPE html><html><head>']
         if style := load_css_file():
             page.append('<style>' + style + '</style>')
 
-        db_size = self.format_filesize_str(path.getsize(self.db_filename))
+        db_size = path.getsize(self.db_filename)
 
-        page.append(f'<b>Total database size:</b> {db_size}.<p>')
-        page.append(f'<b>Total feeds:</b> {len(self.feedlist)}<p><hr>')
+        page.append(f'<b>Total database size:</b> {self.format_filesize_str(db_size)}.<p>')
+        page.append(f'<b>Total feeds:</b> {len(self.feedlist)}.<p>')
+        mean_str = self.format_filesize_str(db_size / len(self.feedlist))
+        page.append(f'<b>Mean feed size:</b> {mean_str}.<p><hr>')
 
-        page.append('</head><body><h3>Database Usage Report</h3>'
-                    '<table><tr><td>#</td><td><b><u>Feed Name</u></b></td><td><b><u>Space Used</u></b></td></tr>')
+        page.append('</head><body><h3>Feed Size Report</h3>'
+                    '<table><tr><td>#</td><td><b><u>Feed Name</u></b></td>'
+                    '<td><b><u>Space Used</u></b></td></tr>')
         for num, k in enumerate(report.items()):
             size = self.format_filesize_str(k[1])
             page.append(f'<tr><td>{num+1}.</td><td>{k[0]}</td><td>{size}</td></tr>')
@@ -748,7 +796,8 @@ class ReaderUI(QMainWindow):
 
         postsrep = sqlitelib.list_feeds_over_post_count(100, self.db_curs, self.db_conn, True)
         page.append('<h3>Feeds With >100 Posts</h3>'
-                     '<table><tr><td>#</td><td><b><u>Feed Name</u></b></td><td><b><u>Post Count</u></b></td></tr>')
+                     '<table><tr><td>#</td><td><b><u>Feed Name</u></b></td>'
+                     '<td><b><u>Post Count</u></b></td></tr>')
         for num, k in enumerate(postsrep.items()):
             page.append(f'<tr><td>{num+1}.</td><td>{k[0]}</td><td>{k[1]}</td></tr>')
         page.append('</table>')
@@ -758,6 +807,9 @@ class ReaderUI(QMainWindow):
         self.curr_page, self.max_page = 1, 1
         self.ui.labelPage.setText(f'Page 1 of 1')
         self.handle_nextprev_buttons()
+
+    def view_feed_properties(self):
+        pass
 
     def about_harv(self):
         #Information page for the program
@@ -939,7 +991,7 @@ def convert_isodate_to_fulldate(isodate):
         localtime = utctime.astimezone(localtz)
         return localtime.strftime(formatstr)
     except Exception as err:
-        print(f'Timezone conversion error - {err}')
+        self.output(f'Timezone conversion error - {err}')
         return isodate
 
 def load_css_file():
@@ -948,13 +1000,13 @@ def load_css_file():
         with open(cssfilename, 'r') as cssfile:
             return cssfile.read()
     except Exception as err:
-        print(f'Loading CSS file failed - {err}')
+        self.output(f'Loading CSS file failed - {err}')
 
 def load_data(infile):
     try:
         with open(infile, 'r') as infile:
             indata = infile.read()
-        print('Data loaded.')
+        self.output('Data loaded.')
         return indata
     except Exception as err:
         self.output(f'{err}')
