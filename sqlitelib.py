@@ -333,6 +333,27 @@ def list_feeds_over_post_count(maxposts, curs, conn, report=False):
     else:
         return [x[0] for x in curs.fetchall()]
 
+def list_feeds_under_post_count(maxposts, curs, conn, report=False):
+    q = ('SELECT f.id, f.title, COUNT(p.id) FROM `posts` p JOIN `feeds` f ON f.id = p.feed_id '
+         'GROUP BY p.feed_id HAVING count(p.id) <= ? ORDER BY COUNT(p.id) DESC;')
+    curs.execute(q, (maxposts,))
+    if report:
+        return {x[1]:x[2] for x in curs.fetchall()}
+    else:
+        return [x[0] for x in curs.fetchall()]
+
+def find_dead_feeds(curs, conn):
+    q = ('SELECT f.id, f.title FROM `feeds` f WHERE f.id NOT IN '
+         '(SELECT p.feed_id	FROM `posts` p GROUP BY p.feed_id);')
+    curs.execute(q)
+    return {x[0]:x[1] for x in curs.fetchall()}
+
+def find_inactive_feeds(year, curs, conn):
+    q = ('SELECT f.id, f.title, p.date FROM `posts` p JOIN `feeds` f ON '
+         'f.id = p.feed_id GROUP BY p.feed_id HAVING DATE < ? ORDER BY p.date')
+    curs.execute(q, (year,))
+    return {x[0]:(x[1], x[2]) for x in curs.fetchall()}
+
 def count_posts(feed_id, curs, conn):
     q = 'SELECT COUNT(*) FROM `posts` WHERE `feed_id` = ?'
     curs.execute(q, (feed_id,))
@@ -386,7 +407,7 @@ def main():
     #print(usage_report(curs, conn))
     #print(count_filtered_unread('eco', curs, conn))
     #print(text_search('kryl', curs, conn, 50))  # kryl
-    #print(list_feeds_over_post_count(400, curs, conn, True))
+    print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
     #update_feed_folder('http://esr.ibiblio.org', 'News', curs, conn)
 

@@ -75,38 +75,43 @@ def parse_opml(infile):
     # needs to distinguish between folders and top-level folderless feeds
 
     currfolder = ''
-    feedlist = opml.parse(infile)
-    folder_feeds, folderless_feeds = [], []
+    #feedlist =
+    try:
+        feedlist = opml.parse(infile)
+    except Exception as err:
+        print(f'Parsing of {infile} failed - {err}')
+    else:
+        folder_feeds, folderless_feeds = [], []
 
-    for x in range(len(feedlist)):
-        if not hasattr(feedlist[x], 'xmlUrl'): # this is a folder
-            currfolder = feedlist[x].text
-            for y in range(len(feedlist[x])):
-                data = feedlist[x][y]
+        for x in range(len(feedlist)):
+            if not hasattr(feedlist[x], 'xmlUrl'): # this is a folder
+                currfolder = feedlist[x].text
+                for y in range(len(feedlist[x])):
+                    data = feedlist[x][y]
+                    try:
+                        if hasattr(data, 'htmlUrl'):
+                            newfeed = Feed(data.htmlUrl, data.title, currfolder, data.type,
+                                           data.xmlUrl, data.htmlUrl)
+                        else: # html link not in feed data, so fall back to xml url
+                            newfeed = Feed(data.xmlUrl, data.title, currfolder, data.type,
+                                           data.xmlUrl, data.xmlUrl)
+                    except Exception as err:
+                        print(f'Error parsing {data} - {err}')
+                    else:
+                        folder_feeds.append(newfeed)
+            else: #folderless feed
+                data = feedlist[x]
                 try:
-                    if hasattr(data, 'htmlUrl'):
-                        newfeed = Feed(data.htmlUrl, data.title, currfolder, data.type,
-                                       data.xmlUrl, data.htmlUrl)
-                    else: # html link not in feed data, so fall back to xml url
-                        newfeed = Feed(data.xmlUrl, data.title, currfolder, data.type,
-                                       data.xmlUrl, data.xmlUrl)
+                    newfeed = Feed(data.htmlUrl, data.title, None, data.type,
+                                   data.xmlUrl, data.htmlUrl)
                 except Exception as err:
                     print(f'Error parsing {data} - {err}')
                 else:
-                    folder_feeds.append(newfeed)
-        else: #folderless feed
-            data = feedlist[x]
-            try:
-                newfeed = Feed(data.htmlUrl, data.title, None, data.type,
-                               data.xmlUrl, data.htmlUrl)
-            except Exception as err:
-                print(f'Error parsing {data} - {err}')
-            else:
-                folderless_feeds.append(newfeed)
+                    folderless_feeds.append(newfeed)
 
-    folder_feeds.sort(key = lambda x: (x.folder, x.title))
-    folderless_feeds.sort(key = lambda x: x.title)
-    return folder_feeds + folderless_feeds
+        folder_feeds.sort(key = lambda x: (x.folder, x.title))
+        folderless_feeds.sort(key = lambda x: x.title)
+        return folder_feeds + folderless_feeds
 
 def parse_date(indate):
     try:
@@ -125,12 +130,12 @@ def parse_post(feed, postdata):
                 p_id = postdata['link']
 
         if hasattr(postdata, 'title'):
-            title = postdata['title'] if title else 'Untitled Feed'
+            title = postdata['title']
         else:
             title = "Untitled Feed"
 
         if hasattr(postdata, 'author'):
-            author = postdata['author'] if author else 'Unknown author'
+            author = postdata['author']
         else:
             author = 'Unknown author'
 
@@ -197,14 +202,18 @@ def import_opml_to_db(opmlfile, curr_feeds, db_curs, db_conn):
     trimfeeds = []
     dupes = 0
     already_subbed = set([x.feed_id for x in curr_feeds])
-    for x in parse_opml(opmlfile):
-        if x.feed_id in already_subbed:
-            print(f'Already subscribed to feed {x}, skipping import.')
-            dupes += 1
-        else:
-            trimfeeds.append(x)
-    sqlitelib.write_feed_list(trimfeeds, db_curs, db_conn)
-    return len(trimfeeds), dupes
+    feeds = parse_opml(opmlfile)
+    if feeds:
+        for x in feeds:
+            if x.feed_id in already_subbed:
+                print(f'Already subscribed to feed {x}, skipping import.')
+                dupes += 1
+            else:
+                trimfeeds.append(x)
+        sqlitelib.write_feed_list(trimfeeds, db_curs, db_conn)
+        return len(trimfeeds), dupes
+    else:
+        return None, None
 
 def import_feeds_from_db(db_curs, db_file):
     feedlist = sqlitelib.retrieve_feedlist(db_curs, db_file)
@@ -352,9 +361,8 @@ def main():
     #invfull = 'http://bhagpuss.blogspot.com/feeds/posts/default'
     #futclo = 'http://feeds.feedburner.com/FutilityCloset'
     #post = retrieve_feed(futclo)
-    feedlist = parse_opml('d:\\breaker-out.opml')
+    feedlist = parse_opml('d:\\tmp\\aus-feeds.opml')
     print(f'{len(feedlist)} feeds imported.')
-
     #retrieve_feeds(feedlist)
     #save_error_log(errorlog)
     #export_opml_to_db('d:\\tmp\\blw10.opml', db_file)

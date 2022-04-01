@@ -3,10 +3,13 @@
 #   wipe of whole directory on start
 # - add subprocess call of reddcrawler
 # create dict for last read post date - also needs to fill in for feeds with no posts read
-# automatic download on sartup, and X minutes thereafter?
 # DB maintenance - if > 50 unread posts, start culling?
 # another report for out-of-date feeds might be handy.
 # add sample feeds from https://github.com/plenaryapp/awesome-rss-feeds
+# tools - report on, and delete all dead feeds. Dead culd be no posts at all, or
+# no posts in last X years.
+# delete folder and all feeds in it?
+# search specified feed rather than all
 
 import sys
 from os import listdir, path, getcwd
@@ -148,6 +151,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionUpdate_Reddit.triggered.connect(self.update_reddit)
         self.ui.actionSearch_Feeds.triggered.connect(self.search_feeds)
         self.ui.actionUsage_Report.triggered.connect(self.usage_report)
+        self.ui.actionDead_Feeds_Report.triggered.connect(self.dead_feeds_report)
         #options
         self.ui.actionAbout_Harvester.triggered.connect(self.about_harv)
 
@@ -492,6 +496,9 @@ class ReaderUI(QMainWindow):
             self.setWindowTitle(f'{self.version_str} - {reddurl}')
             self.ui.webEngine.setZoomFactor(self.web_zoom)
             self.ui.webEngine.load(QUrl.fromLocalFile(reddurl))
+            self.curr_page, self.max_page = 1, 1
+            self.ui.labelPage.setText(f'Page 1 of 1')
+            self.handle_nextprev_buttons()
         elif node_id == 'folder':
             # two options - either expand whole folder as if expand widget was clicked
             # or generate new sorted page for all feeds in that folder. Or both?
@@ -606,13 +613,16 @@ class ReaderUI(QMainWindow):
             "OPML Files (*.opml);;All files (*.*)")
         if dlg[0] != '':
             new, dupes = rsslib.import_opml_to_db(dlg[0], self.feedlist, self.db_curs, self.db_conn)
-            self.load_feed_data()
-            self.setup_tree()
-            self.update_all_feeds()
-            self.setup_tree()
-            msg = f'Imported {new} new feeds'
-            add = '.' if not dupes else f' and skipped {dupes} duplicates.'
-            self.ui.statusbar.showMessage(msg + add)
+            if new:
+                self.load_feed_data()
+                self.setup_tree()
+                self.update_all_feeds()
+                self.setup_tree()
+                msg = f'Imported {new} new feeds'
+                add = '.' if not dupes else f' and skipped {dupes} duplicates.'
+                self.ui.statusbar.showMessage(msg + add)
+            else:
+                self.ui.statusbar.showMessage(f'Feed import failed.')
 
     def export_feeds_to_opml(self):
         opml = []
@@ -823,6 +833,25 @@ class ReaderUI(QMainWindow):
         self.curr_page, self.max_page = 1, 1
         self.ui.labelPage.setText(f'Page 1 of 1')
         self.handle_nextprev_buttons()
+
+    def dead_feeds_report(self):
+        dead = sqlitelib.find_dead_feeds(self.db_curs, self.db_conn)
+        if dead:
+            page = ['<!DOCTYPE html><html><head>']
+            if style := load_css_file():
+                page.append('<style>' + style + '</style>')
+
+            page.append('<b>Dead Feeds</b><p><ol>')
+
+            for k, v in dead.items():
+                page.append(f'<li>{v}</li>')
+            page.append('<//ol>')
+
+            page = ''.join(page)
+            self.ui.webEngine.setHtml(page)
+            self.curr_page, self.max_page = 1, 1
+            self.ui.labelPage.setText(f'Page 1 of 1')
+            self.handle_nextprev_buttons()
 
     def view_feed_properties(self):
         pass
