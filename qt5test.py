@@ -6,6 +6,7 @@
 # automatic download on sartup, and X minutes thereafter?
 # DB maintenance - if > 50 unread posts, start culling?
 # another report for out-of-date feeds might be handy.
+# add sample feeds from https://github.com/plenaryapp/awesome-rss-feeds
 
 import sys
 from os import listdir, path, getcwd
@@ -55,6 +56,7 @@ class ReaderUI(QMainWindow):
     results = []
     last_read = {}
     redd_dir = ''
+    first_run_mode = True
 
     def __init__(self):
         super(ReaderUI, self).__init__()
@@ -82,6 +84,7 @@ class ReaderUI(QMainWindow):
         self.ui._search_panel.closed.connect(self.ui.search_toolbar.hide)
 
         self.initializeUI()
+        self.load_previous_state()
         self.init_data()
         self.show()
 
@@ -165,7 +168,6 @@ class ReaderUI(QMainWindow):
         self.ui.webEngine.setZoomFactor(self.web_zoom)
 
     def init_data(self):
-        self.load_previous_state()
         self.load_db_file(self.db_filename)
         self.load_feed_data()
         self.locate_reddit_dir()
@@ -269,6 +271,7 @@ class ReaderUI(QMainWindow):
     def load_previous_state(self):
         settings = QSettings('Hypogeum', 'Harvester')
         if settings.allKeys() != []:
+            self.first_run_mode = False
             self.restoreGeometry(settings.value('geometry'))
             self.restoreState(settings.value("windowState"))
             self.ui.splitter.restoreState(settings.value("splitterSizes"))
@@ -276,10 +279,7 @@ class ReaderUI(QMainWindow):
             self.redd_dir = settings.value('redd_dir')
             zoom = settings.value('web_zoom')
             try:
-                if zoom:
-                    self.web_zoom = float(zoom)
-                else:
-                    self.web_zoom = 1.25
+                self.web_zoom = float(zoom) if zoom else 1.25
             except:
                 self.web_zoom = 1.25
 
@@ -298,7 +298,13 @@ class ReaderUI(QMainWindow):
         get_db_msg = QMessageBox(self)
         get_db_msg.setWindowTitle("Create or Locate Database")
         get_db_msg.setIcon(QMessageBox.Critical)
-        get_db_msg.setText('The database either does not exist or could not be found.')
+
+        if self.first_run_mode:
+            msg = ("As this is Harvester's first run, you can either create a "
+                   "database, or load a previously created database.")
+        else:
+            msg = 'The previous database could not be found.'
+        get_db_msg.setText(msg)
         btn_create_db = get_db_msg.addButton('Create DB', QMessageBox.AcceptRole)
         btn_load_db = get_db_msg.addButton('Load DB', QMessageBox.AcceptRole)
         btn_quit = get_db_msg.addButton('Quit', QMessageBox.DestructiveRole)
@@ -453,14 +459,12 @@ class ReaderUI(QMainWindow):
             self.output(f'{err}')
         if new_db:
             if sqlitelib.create_DB(new_db):
-                self.db_filename = new_db
-                self.db_curs, self.db_conn = sqlitelib.connect_DB(new_db)
-
+                self.output(f'New database {new_db} created.')
                 loadnew = QMessageBox.question(self, "Load new DB?",
                           "Would you like to load the new database?",
                           QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
                 if loadnew == QMessageBox.Yes:
-
+                    '''
                     load_sample = QMessageBox.question(self, "Import Sample Feeds?",
                                   "Would you like to add some sample feeds to the "
                                   "new database? If not, the new database will be empty.",
@@ -468,7 +472,10 @@ class ReaderUI(QMainWindow):
                     if load_sample == QMessageBox.Yes:
                         #new, dupes = rsslib.import_opml_to_db(dlg[0], self.feedlist, self.db_curs, self.db_conn)
                         pass
-                    self.load_db_file(self.db_filename)
+                    '''
+                    self.db_filename = new_db
+                    self.db_curs, self.db_conn = sqlitelib.connect_DB(new_db)
+                    self.init_data()
                 return self.db_filename
 
     def tree_click(self):
@@ -595,7 +602,6 @@ class ReaderUI(QMainWindow):
         self.output(f'Mark feed {self.node_name} - {self.node_id} read.')
 
     def import_feeds_from_opml(self):
-        # QQQQ should check for duplicate feeds
         dlg = QFileDialog.getOpenFileName(self, "Open OPML File", "", \
             "OPML Files (*.opml);;All files (*.*)")
         if dlg[0] != '':
@@ -604,11 +610,19 @@ class ReaderUI(QMainWindow):
             self.setup_tree()
             self.update_all_feeds()
             self.setup_tree()
-            self.ui.statusbar.showMessage(f'Imported {new} new feeds and skipped {dupes} duplicates.')
+            msg = f'Imported {new} new feeds'
+            add = '.' if not dupes else f' and skipped {dupes} duplicates.'
+            self.ui.statusbar.showMessage(msg + add)
 
     def export_feeds_to_opml(self):
-        fname = 'd:\\tmp\\opml-export.opml'
         opml = []
+
+        dlg = QFileDialog.getSaveFileName(self, "Save OPML File", "", \
+            "OPML Files (*.opml);;All files (*.*)")
+        if dlg[0] != '':
+            fname = dlg[0]
+        else:
+            return
 
         timestr = datetime.now().strftime('%a, %d %b %Y %I:%M:%S %p %Z')
         opml.append('<opml version="1.1">\n\t<head>\n\t\t<title>Harvester Subscriptions</title>\n\t\t'
@@ -616,6 +630,7 @@ class ReaderUI(QMainWindow):
         for folder in self.folderlist:
             opml.append(f'\t\t<outline text="{folder}">\n')
             for feed in [x for x in self.feedlist if x.folder == folder]:
+                feed = feed.sanitize()
                 opml.append(f'\t\t\t<outline text="{feed.title}" title="{feed.title}" '
                             f'type="{feed.f_type}" xmlUrl="{feed.rss_url}" '
                             f'htmlUrl="{feed.html_url}"/>\n')
@@ -623,6 +638,7 @@ class ReaderUI(QMainWindow):
 
         # folderless feeds
         for feed in [x for x in self.feedlist if x.folder in [None, '']]:
+            feed = feed.sanitize()
             opml.append(f'\t\t<outline text="{feed.title}" title="{feed.title}" '
                         f'type="{feed.f_type}" xmlUrl="{feed.rss_url}" '
                         f'htmlUrl="{feed.html_url}"/>\n')

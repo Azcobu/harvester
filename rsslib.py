@@ -6,6 +6,7 @@ from queue import Queue
 import feedparser
 from dateutil.parser import *
 import re
+import string
 import opml
 import sqlitelib
 import time
@@ -29,6 +30,19 @@ class Feed:
 
     def __repr__(self):
         return f'Feed: {self.title} ({self.html_url})'
+
+    def san(self, instr):
+        # &apos; (') is also listed as excluded, but doesn't seem to cause any problems?
+        if instr and type(instr) == str:
+            rep = {'&':'&amp;', '"':'&quot;', '<':'&lt;', '>':'&gt;'}
+            for k, v in rep.items():
+                instr = instr.replace(k, v)
+            return instr
+
+    def sanitize(self):
+        return Feed(self.feed_id, self.san(self.title), self.folder, self.f_type,
+                    self.san(self.rss_url), self.san(self.html_url), self.san(self.tags),
+                    self.last_read, self.favicon)
 
 class Post:
     def __init__(self, p_id, feed_id, title, author, url, date, content, flags):
@@ -59,6 +73,7 @@ def open_opml_file(infile):
 def parse_opml(infile):
     #p_id, feed_id, title, folder, f_type, rss_url, html_url, tags=[], last_read, favicon)
     # needs to distinguish between folders and top-level folderless feeds
+
     currfolder = ''
     feedlist = opml.parse(infile)
     folder_feeds, folderless_feeds = [], []
@@ -110,12 +125,12 @@ def parse_post(feed, postdata):
                 p_id = postdata['link']
 
         if hasattr(postdata, 'title'):
-            title = postdata['title']
+            title = postdata['title'] if title else 'Untitled Feed'
         else:
-            title = "No title."
+            title = "Untitled Feed"
 
         if hasattr(postdata, 'author'):
-            author = postdata['author']
+            author = postdata['author'] if author else 'Unknown author'
         else:
             author = 'Unknown author'
 
@@ -128,7 +143,6 @@ def parse_post(feed, postdata):
                 date = postdata['updated']
         if date:
             date = parse_date(date) #QQQQ and if neither is found?
-        #else?
 
         if hasattr(postdata, 'content'):
             content = postdata['content'][0]['value']
@@ -338,8 +352,9 @@ def main():
     #invfull = 'http://bhagpuss.blogspot.com/feeds/posts/default'
     #futclo = 'http://feeds.feedburner.com/FutilityCloset'
     #post = retrieve_feed(futclo)
-    feedlist = parse_opml('d:\\tmp\\folderless.opml')
-    #print(feedlist)
+    feedlist = parse_opml('d:\\breaker-out.opml')
+    print(f'{len(feedlist)} feeds imported.')
+
     #retrieve_feeds(feedlist)
     #save_error_log(errorlog)
     #export_opml_to_db('d:\\tmp\\blw10.opml', db_file)
