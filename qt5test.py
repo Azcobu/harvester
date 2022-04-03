@@ -1036,7 +1036,7 @@ def convert_isodate_to_fulldate(isodate):
         localtime = utctime.astimezone(localtz)
         return localtime.strftime(formatstr)
     except Exception as err:
-        self.output(f'Timezone conversion error - {err}')
+        print(f'Timezone conversion error - {err}')
         return isodate
 
 def load_css_file():
