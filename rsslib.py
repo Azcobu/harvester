@@ -346,6 +346,11 @@ def test_feed(feed_url):
         print(f'Failed to parse feed at {feed_url} - {err}')
         return False
 
+def royalroad_rss(inurl):
+    url, y, z = inurl.rpartition('/')
+    main, _, feed_id = url.rpartition('/')
+    return f'{main}/syndication/{feed_id}'
+
 def validate_feed(feed_url):
     # variants: try /feed/ or /rss/ or /feeds/posts/default/
     #check if feed url is correct, and if possible return feed title
@@ -353,6 +358,8 @@ def validate_feed(feed_url):
               test_feed(urljoin(feed_url, '/feed/')) or\
               test_feed(urljoin(feed_url, '/rss/')) or\
               test_feed(urljoin(feed_url, '/feeds/posts/default/'))
+    if 'royalroad' in feed_url:
+        results = test_feed(royalroad_rss(feed_url))
     return results
 
 def main():
