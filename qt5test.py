@@ -68,6 +68,9 @@ class ReaderUI(QMainWindow):
         self.ui.webEngine.setPage(CustomWebEnginePage(self))
         self.ui.splitter.addWidget(self.ui.webEngine)
 
+        # hides title bar - looks nice, but annoying in practice
+        #self.setWindowFlag(Qt.FramelessWindowHint)
+
         self.ui.buttonNextPage = QPushButton('')
         #self.ui.buttonNextPage.setIcon(QIcon(':/icons/icons/icons8-fast-forward-100.png'))
         self.ui.buttonNextPage.setStyleSheet("border-image : url(:/icons/icons/icons8-fast-forward-100.png);")
@@ -416,7 +419,7 @@ class ReaderUI(QMainWindow):
             foldernode = QTreeWidgetItem(self.ui.treeMain, ['ReddFiles', 'folder'])
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-reddit-100-2.png'))
-            reddfiles = listdir(self.redd_dir)
+            reddfiles = sorted(listdir(self.redd_dir), key = lambda x:x.lower())
             for rf in reddfiles:
                 newnode = QTreeWidgetItem(foldernode, [f'{rf}', 'reddfile'])
                 newnode.setFont(0, QFont("Segoe UI", 10))
@@ -1059,7 +1062,7 @@ def convert_isodate_to_fulldate(isodate):
         localtime = utctime.astimezone(localtz)
         return localtime.strftime(formatstr)
     except Exception as err:
-        self.output(f'Timezone conversion error - {err}')
+        print(f'Timezone conversion error - {err}')
         return isodate
 
 def load_css_file():
