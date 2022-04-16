@@ -88,7 +88,7 @@ def calc_limit_date(instr):
     else:
         return 99999
 
-def text_search(srchtext, curs, conn, limit=None, datelimit=None):
+def text_search(srchtext, curs, conn, limit=None, datelimit=None, feed_id=None):
     # search scores?
 
     if datelimit:
@@ -97,6 +97,10 @@ def text_search(srchtext, curs, conn, limit=None, datelimit=None):
     srchtext = f'%{srchtext}%'
 
     query = f'SELECT * FROM posts WHERE `content` LIKE ? '
+
+    if feed_id:
+        query += f'AND `feed_id` = "{feed_id}" '
+
     if datelimit:
         query += f'AND `date` >= date("now", "-{datelimit} day") '
     query += f'ORDER BY `date` DESC'
@@ -389,13 +393,13 @@ def main():
     #get_data(curs, conn)
     #newpost = Post(2, 'The Hypogeum', 'Fathr Inire', '2021-06-08', 'Certainly it is desirable to maintain in being a movement that has proved so useful in the past, and as long as the mirrors of the caller Hethor remain unbroken, she provides it with a plausible commander.')
     #write_post(dbfile, 'vfdvdf', curs, conn)
-    #text_search(curs, conn, 'text', 'of')
     #posttest = get_most_recent(5, curs, conn)
     #k = count_all_unread()
     #print(posttest)
     #mark_old_as_read(3, curs, conn)
     #vacuum(conn)
-    #k = text_search('new world', 20, curs, conn)
+    k = text_search('new world', curs, conn, None, None)
+    print(k)
     #  feed.feed_id, feed.title, feed.folder, feed.f_type, feed.rss_url, feed.html_url, str(feed.tags))
     #newfeed = rsslib.Feed('aaa Feed ID', 'aaa Feed title', 'folder', 'rss', 'http://whatever.com',
                            #'http://direct.com', '[]')
@@ -407,7 +411,7 @@ def main():
     #print(usage_report(curs, conn))
     #print(count_filtered_unread('eco', curs, conn))
     #print(text_search('kryl', curs, conn, 50))  # kryl
-    print(find_inactive_feeds(2021, curs, conn))
+    #print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
     #update_feed_folder('http://esr.ibiblio.org', 'News', curs, conn)
 

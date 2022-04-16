@@ -9,7 +9,6 @@
 # tools - report on, and delete all dead feeds. Dead culd be no posts at all, or
 # no posts in last X years.
 # delete folder and all feeds in it?
-# search specified feed rather than all
 
 import sys
 from os import listdir, path, getcwd
@@ -110,6 +109,7 @@ class ReaderUI(QMainWindow):
         self.updateFeedAction = QAction("&Update Feed", self)
         self.unsubAction = QAction("Unsubscribe", self)
         self.feedProperties = QAction('View Feed Properies', self)
+        self.actionSearch_Selected_Feed = QAction('Search Current Feed', self)
 
         #connect actions
         self.newSubAction.triggered.connect(self.new_sub)
@@ -117,6 +117,7 @@ class ReaderUI(QMainWindow):
         self.updateFeedAction.triggered.connect(self.update_feed)
         self.unsubAction.triggered.connect(self.unsubscribe_feed)
         self.feedProperties.triggered.connect(self.view_feed_properties)
+        self.actionSearch_Selected_Feed.triggered.connect(self.search_single_feed)
 
         # search box
         self.ui.lineSearch.textChanged.connect(self.search_feed_names)
@@ -150,6 +151,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionUpdate_Current_Feed.triggered.connect(self.update_feed)
         self.ui.actionUpdate_Reddit.triggered.connect(self.update_reddit)
         self.ui.actionSearch_Feeds.triggered.connect(self.search_feeds)
+        self.ui.actionSearch_Selected_Feed.triggered.connect(self.search_single_feed)
         self.ui.actionUsage_Report.triggered.connect(self.usage_report)
         self.ui.actionDead_Feeds_Report.triggered.connect(self.dead_feeds_report)
         #options
@@ -209,6 +211,8 @@ class ReaderUI(QMainWindow):
             menu.addAction(self.updateFeedAction)
             self.updateFeedAction.setStatusTip("Update the current feed.")
             menu.addAction(self.markReadAction)
+            self.actionSearch_Selected_Feed.setStatusTip("Search the current feed.")
+            menu.addAction(self.actionSearch_Selected_Feed)
             self.markReadAction.setStatusTip("Mark current feed as read.")
             menu.addAction(self.unsubAction)
             self.unsubAction.setStatusTip("Unsubscribe from the current feed.")
@@ -682,6 +686,25 @@ class ReaderUI(QMainWindow):
                 self.ui.webEngine.setHtml(posthtml)
             else:
                 self.ui.statusbar.showMessage(f'No results found for search "{self.srchtext}"')
+
+    def search_single_feed(self):
+        if self.ui.treeMain.currentItem():
+            node_title = self.ui.treeMain.currentItem().text(0)
+            node_id = self.ui.treeMain.currentItem().text(1)
+
+            srchdialog = SrchDialog(self)
+            srchdialog.exec()
+            if self.srchtext:
+                self.output(f'Searching {node_title} for "{self.srchtext}" in {self.srchtime.lower()}.')
+                results = sqlitelib.text_search(self.srchtext, self.db_curs, self.db_conn, 100, self.srchtime, node_id)
+                if results:
+                    self.ui.statusbar.showMessage(f'{len(results)} results found.')
+                    posthtml = self.generate_posts_page(results)
+                    self.ui.webEngine.setHtml(posthtml)
+                else:
+                    self.ui.statusbar.showMessage(f'No results found for search "{self.srchtext}"')
+        else:
+            self.ui.statusbar.showMessage(f'No feed currently selected.')
 
     def update_reddit(self):
         # QQQQ should locate correct file
