@@ -760,7 +760,7 @@ class ReaderUI(QMainWindow):
                             f'</div><hr class="new">')
         else:
             page.append('<h4>No results found.</h4>')
-            self.curr_page = 0
+            #self.curr_page = 0
             self.handle_nextprev_buttons()
         page.append('</body></html>')
 
