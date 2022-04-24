@@ -541,6 +541,7 @@ class ReaderUI(QMainWindow):
             node = root.child(x)
             if node.text(1) == 'folder' and node != curr_node:
                 node.setExpanded(False)
+        self.ui.treeMain.scrollToItem(curr_node)
 
     def tree_hover(self, item):
         if item.text(1) != 'folder':
@@ -760,7 +761,6 @@ class ReaderUI(QMainWindow):
                             f'</div><hr class="new">')
         else:
             page.append('<h4>No results found.</h4>')
-            #self.curr_page = 0
             self.handle_nextprev_buttons()
         page.append('</body></html>')
 
