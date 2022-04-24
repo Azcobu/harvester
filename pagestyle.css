@@ -8,6 +8,8 @@ body {
 	    font-family: Georgia;
 }
 
+
+
 .post {
 		background: black; 
 		/*border: solid; 
@@ -19,10 +21,14 @@ body {
 }
 
 .post .read { color: deepskyblue;
-			  font-weight: normal; }
+			  font-weight: normal;
+			  display: inline-block;
+			  width:95%;}
 
 .post .unread { color: blue;
-                font-weight: bold; }
+                font-weight: bold;
+				display: inline-block;
+				width:95%;}
 
 hr.new {
   border: 2px rgb(0, 0, 64);

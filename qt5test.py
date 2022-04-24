@@ -13,11 +13,11 @@
 import sys
 from os import listdir, path, getcwd
 from PyQt5 import QtGui
-from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, QThread, pyqtSignal,
+from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
                          pyqtSlot)
 from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap
 from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
-                             QTreeWidgetItem, QMenu, QAction, QDialog, QProgressBar,
+                             QTreeWidgetItem, QMenu, QAction, QDialog,
                              QLineEdit, QLabel, QMessageBox, QInputDialog, QWidget,
                              QToolBar, QHBoxLayout, QShortcut, QCheckBox, QFileDialog)
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
@@ -51,6 +51,8 @@ class ReaderUI(QMainWindow):
     db_filename = None
     node_name, node_id = '', ''
     web_zoom = 1.25
+    pagenav_icon_size = 20
+    anchor_id = 0
     srchtext = ''
     page_size = 10 # how many posts to a page
     curr_page = 1
@@ -173,6 +175,7 @@ class ReaderUI(QMainWindow):
         self.update_icon = QIcon(':/icons/icons/icons8-right-arrow-100.png')
 
         self.ui.webEngine.page().linkHovered.connect(self.link_hover)
+        self.ui.webEngine.page().urlChanged.connect(lambda url: self.url_change(url))
         self.ui.webEngine.loadFinished.connect(self.set_web_zoom)
         self.ui.webEngine.setZoomFactor(self.web_zoom)
 
@@ -185,7 +188,26 @@ class ReaderUI(QMainWindow):
         #self.update_all_feeds()
 
     def link_hover(self, url):
-        self.ui.statusbar.showMessage(f'{url}')
+        if 'data:text/html;' in url:
+            self.ui.statusbar.showMessage(f'Jump to next/previous post.')
+        else:
+            self.ui.statusbar.showMessage(f'{url}')
+
+    def url_change(self, url):
+        url_str = str(url)
+        if '#anchor' in url_str:
+            a, b, anchor_id = url_str.rpartition('#anchor')
+            anchor_id = int(anchor_id.split("')")[0])
+
+            anchor_target_page = anchor_id // self.page_size + 1
+            if anchor_target_page < self.curr_page: # go back
+                self.ui.buttonPrevPage.click()
+                self.anchor_id = anchor_id
+                # QQQQ want to rename this
+                self.set_web_zoom()
+
+            elif anchor_target_page > self.curr_page: # go forwards
+                self.ui.buttonNextPage.click()
 
     def output(self, instr):
         # centralises all output so it can be disabled or logged as needed
@@ -222,7 +244,6 @@ class ReaderUI(QMainWindow):
             menu.addAction(self.feedProperties)
 
             curr_node = [x for x in self.feedlist if x.feed_id == self.node_id][0]
-
 
             #menu.addAction("Choice 2")
             #menu.addAction("Choice 3")
@@ -262,12 +283,17 @@ class ReaderUI(QMainWindow):
             except Exception as err:
                 self.output(f'{err}')
 
-    def set_web_zoom(self):
+    def set_web_zoom(self, anchor_jump_id=None):
+        #QQQQ want to rename this at some stage to reflect changes
         if not (isinstance(self.web_zoom, float) or isinstance(self.web_zoom, int)):
             self.output('Error retrieving previous zoom level - value was ' +
                        f'{self.web_zoom}. Setting to default of 125%.')
             self.web_zoom = 1.25
         self.ui.webEngine.setZoomFactor(self.web_zoom)
+
+        anchor_str = f'anchor{self.anchor_id}'
+        prev_js = f"document.getElementById('{anchor_str}').scrollIntoView();"
+        self.ui.webEngine.page().runJavaScript(prev_js)
 
     def increase_text_size(self):
         self.web_zoom += 0.05
@@ -324,7 +350,7 @@ class ReaderUI(QMainWindow):
 
         if get_db_msg.clickedButton() is btn_create_db:
             return self.create_db()
-        elif get_db_msg.clickedButton() is btn_load_db:
+        if get_db_msg.clickedButton() is btn_load_db:
             return self.load_db_dlg()
         else:
             sys.exit(0) # still in init loop, so need more forceful exit.
@@ -729,6 +755,20 @@ class ReaderUI(QMainWindow):
                     self.load_feed_data()
                     self.setup_tree()
 
+    def generate_jump_buttons(self, anchor_id):
+        anchor = ''
+        if anchor_id < len(self.results) - 1:
+            anchor = (f'<a href="#anchor{anchor_id+1}"><img alt="Next" '
+                       'style="float:right" title="Next post" '
+                       'src="qrc:/icons/icons/icons8-download-100-3.png" '
+                      f'width="{self.pagenav_icon_size}" height="{self.pagenav_icon_size}"></a>')
+        if anchor_id != 0:
+            anchor += (f'<a href="#anchor{anchor_id-1}"><img alt="Prev" '
+                        'style="float:right" title="Previous post" '
+                        'src="qrc:/icons/icons/icons8-upload-100-2.png" '
+                       f'width="{self.pagenav_icon_size}" height="{self.pagenav_icon_size}"></a>')
+        return anchor
+
     def generate_posts_page(self, results=None):
         if results: # cache results
             self.results = results
@@ -746,6 +786,7 @@ class ReaderUI(QMainWindow):
         self.max_page = max(self.max_page, 1)
         self.handle_nextprev_buttons()
         results = results[startpost:endpost]
+        anchor_id = startpost
 
         self.ui.labelPage.setFont(QFont("Segoe UI", 10, weight=QFont.Bold))
         self.ui.labelPage.setText(f'Page {self.curr_page} of {self.max_page}')
@@ -753,12 +794,15 @@ class ReaderUI(QMainWindow):
         if results:
             for post in results:
                 convdate = convert_isodate_to_fulldate(post.date)
+                anchortext = self.generate_jump_buttons(anchor_id)
                 isread = 'unread' if post.flags == 'None' else 'read'
                 page.append('<div class="post">'
-                            f'<a class="{isread}" href="{post.url}">{post.title}</a>'
+                            f'<a id="anchor{anchor_id}" class="{isread}" href="{post.url}">{post.title}</a> '
+                            f' {anchortext} '
                             f'<h5>{post.author} on {convdate}</h5>'
                             f'<p>{post.content}'
                             f'</div><hr class="new">')
+                anchor_id += 1
         else:
             page.append('<h4>No results found.</h4>')
             self.handle_nextprev_buttons()
@@ -1071,7 +1115,7 @@ def load_css_file():
         with open(cssfilename, 'r') as cssfile:
             return cssfile.read()
     except Exception as err:
-        self.output(f'Loading CSS file failed - {err}')
+        print(f'Loading CSS file failed - {err}')
 
 def load_data(infile):
     try:
@@ -1080,7 +1124,7 @@ def load_data(infile):
         self.output('Data loaded.')
         return indata
     except Exception as err:
-        self.output(f'{err}')
+        print(f'{err}')
 
 def exception_hook(exctype, value, traceback):
     print(exctype, value, traceback)
