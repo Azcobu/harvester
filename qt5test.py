@@ -291,8 +291,12 @@ class ReaderUI(QMainWindow):
             self.web_zoom = 1.25
         self.ui.webEngine.setZoomFactor(self.web_zoom)
 
-        anchor_str = f'anchor{self.anchor_id}'
-        prev_js = f"document.getElementById('{anchor_str}').scrollIntoView();"
+        # now page load is finished, jump to anchor if one is set
+        if self.anchor_id > 0:
+            anchor_str = f'anchor{self.anchor_id}'
+            prev_js = f"document.getElementById('{anchor_str}').scrollIntoView();"
+        else: # just jump to top
+            prev_js = 'window.scroll(0, 0)'
         self.ui.webEngine.page().runJavaScript(prev_js)
 
     def increase_text_size(self):
@@ -541,6 +545,7 @@ class ReaderUI(QMainWindow):
             curr_node.setExpanded(not curr_state)
         else:
             #print(f'Tree clicked - {node_title} selected with ID {node_id}.')
+            self.anchor_id = 0
             self.setWindowTitle(f'{self.version_str} - {node_title}')
             try:
                 results = sqlitelib.get_feed_posts(node_id, self.db_curs, self.db_conn)

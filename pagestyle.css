@@ -23,12 +23,12 @@ body {
 .post .read { color: deepskyblue;
 			  font-weight: normal;
 			  display: inline-block;
-			  width:95%;}
+			  width:90%;}
 
 .post .unread { color: blue;
                 font-weight: bold;
 				display: inline-block;
-				width:95%;}
+				width:90%;}
 
 hr.new {
   border: 2px rgb(0, 0, 64);
