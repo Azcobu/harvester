@@ -10,13 +10,13 @@
 # no posts in last X years.
 # delete folder and all feeds in it?
 
-import sys
-import threading
-import urllib.request
-import rsslib
-import sqlitelib
-import resources.breeze_resources
-
+from functools import partial
+from os import listdir, path, getcwd
+from datetime import datetime
+from dateutil import tz
+from queue import Queue
+from subprocess import Popen
+from dateutil.parser import *
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
                          pyqtSlot)
@@ -26,16 +26,16 @@ from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
                              QLineEdit, QLabel, QMessageBox, QInputDialog, QWidget,
                              QToolBar, QHBoxLayout, QShortcut, QCheckBox, QFileDialog)
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
-from functools import partial
-from os import listdir, path, getcwd
-from dateutil.parser import *
-from dateutil import tz
-from datetime import datetime
-from queue import Queue
-from subprocess import Popen
 from ui.harvester_main import Ui_MainWindow
 from ui.harvsearch import Ui_frmSearch
-from ui.harvnewsub import Ui_frmNewSub
+
+import sys
+import threading
+import urllib.request
+import rsslib
+import sqlitelib
+from newsub import NewSubDialog
+import resources.breeze_resources
 
 class CustomWebEnginePage(QWebEnginePage):
     # Custom WebEnginePage to customize how we handle link navigation
@@ -876,7 +876,7 @@ class ReaderUI(QMainWindow):
             return f'{round(fsize / 1024):,} KB'
 
     def usage_report(self):
-        # make feed names clickable?
+        """Generates basic size reports for the current feed DB"""
         report = sqlitelib.usage_report(self.db_curs, self.db_conn)
         page = ['<!DOCTYPE html><html><head>']
         if style := load_css_file():
@@ -912,6 +912,7 @@ class ReaderUI(QMainWindow):
         self.handle_nextprev_buttons()
 
     def dead_feeds_report(self):
+        """Lists feeds with no posts"""
         dead = sqlitelib.find_dead_feeds(self.db_curs, self.db_conn)
         if dead:
             page = ['<!DOCTYPE html><html><head>']
@@ -952,6 +953,7 @@ class ReaderUI(QMainWindow):
 #=========================================================================
 
 class SrchDialog(QDialog):
+    """UI elements for searching of single or multiple feeds"""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.parent = parent
@@ -981,76 +983,10 @@ class SrchDialog(QDialog):
         self.parent.srchtime = None
         self.close()
 
-# ============================================================================
-
-class NewSubDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.parent = parent
-        self.feed = ''
-        self.srchtext = ''
-        self.ui = Ui_frmNewSub()
-        self.ui.setupUi(self)
-        self.ui.lineNewSubFeedUrl.setFocus()
-
-        #populate listbox
-        self.ui.listNewSubFolders.addItems(parent.folderlist)
-        if self.ui.listNewSubFolders.count() > 0:
-            self.ui.listNewSubFolders.item(0).setSelected(True)
-
-        # Connect up the buttons
-        self.ui.btnNewSubCheck.clicked.connect(self.check_button)
-        self.ui.btnNewSubOK.clicked.connect(self.ok_button)
-        self.ui.btnNewSubCancel.clicked.connect(self.cancel_button)
-
-        self.ui.btnNewSubOK.setDisabled(True)
-        self.ui.lineNewSubFeedUrl.textEdited.connect(self.edit_feed_url)
-
-    def check_button(self):
-        feed_url = self.ui.lineNewSubFeedUrl.text()
-        if feed_url:
-            if feed_url not in [x.rss_url for x in self.parent.feedlist]:
-                self.ui.lblFeedValid.setText('Checking feed...')
-                self.ui.lblFeedValid.repaint()
-                results = rsslib.validate_feed(feed_url)
-                if type(results) == rsslib.Feed:
-                    #if results.title not in [x.title for x in self.parent.feedlist]:
-                    self.feed = results
-                    self.ui.lineNewSubFeedUrl.setText(results.rss_url)
-                    self.ui.lblFeedValid.setText('Feed is valid.')
-                    self.ui.lineNewSubTitle.setText(results.title)
-                    self.ui.btnNewSubOK.setDisabled(False)
-                    #else:
-                    #    self.ui.lblFeedValid.setText('Duplicate feed title.')
-                else:
-                    self.ui.lblFeedValid.setText('Feed URL is invalid.')
-            else:
-                self.ui.lblFeedValid.setText('Subscription already exists.')
-
-    def ok_button(self):
-        self.accept()
-
-    def cancel_button(self):
-        self.reject()
-
-    def get_inputs(self):
-        if self.ui.listNewSubFolders.count() > 0:
-            if not self.ui.listNewSubFolders.currentItem():
-                self.ui.listNewSubFolders.setCurrentRow(0)
-            self.feed.folder = self.ui.listNewSubFolders.currentItem().text()
-        else:
-            self.feed.folder = None
-
-        self.feed.title = self.ui.lineNewSubTitle.text()
-
-        return self.feed
-
-    def edit_feed_url(self):
-        self.ui.lblFeedValid.setText('')
-
-# ============================================================================
+#=========================================================================
 
 class SearchPanel(QWidget):
+    """UI elements for text search of the current page from the status bar"""
     searched = pyqtSignal(str, QWebEnginePage.FindFlag)
     closed = pyqtSignal()
 
