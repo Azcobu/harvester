@@ -16,7 +16,7 @@ from urllib.parse import urljoin
 errorlog = []
 
 class Feed:
-    def __init__(self, feed_id, title, folder, f_type, rss_url, html_url, tags=[],\
+    def __init__(self, feed_id, title, folder, f_type, rss_url, html_url, tags=None,\
                  last_read=0, favicon=None):
         self.feed_id = feed_id
         self.title = title
@@ -24,6 +24,9 @@ class Feed:
         self.f_type = f_type
         self.rss_url = rss_url
         self.html_url = html_url
+        self.tags = tags
+        if tags is None:
+            self.tags = []
         self.tags = tags
         self.last_read = last_read
         self.favicon = favicon
@@ -333,7 +336,7 @@ def retrieve_feeds(feedlist, treeMain=None, flags=None):
     print('Feed retrieval finished.')
 '''
 
-def test_feed(feed_url):
+def check_feed(feed_url):
     # returns either a Feed object or False
     # feed_id, title=title, folder=None, f_type, rss_url, html_url=link, tags, favicon
     try:
@@ -354,12 +357,12 @@ def royalroad_rss(inurl):
 def validate_feed(feed_url):
     # variants: try /feed/ or /rss/ or /feeds/posts/default/
     #check if feed url is correct, and if possible return feed title
-    results = test_feed(feed_url) or\
-              test_feed(urljoin(feed_url, '/feed/')) or\
-              test_feed(urljoin(feed_url, '/rss/')) or\
-              test_feed(urljoin(feed_url, '/feeds/posts/default/'))
+    results = check_feed(feed_url) or\
+              check_feed(urljoin(feed_url, '/feed/')) or\
+              check_feed(urljoin(feed_url, '/rss/')) or\
+              check_feed(urljoin(feed_url, '/feeds/posts/default/'))
     if 'royalroad' in feed_url:
-        results = test_feed(royalroad_rss(feed_url))
+        results = check_feed(royalroad_rss(feed_url))
     return results
 
 def main():
@@ -368,14 +371,16 @@ def main():
     #invfull = 'http://bhagpuss.blogspot.com/feeds/posts/default'
     #futclo = 'http://feeds.feedburner.com/FutilityCloset'
     #post = retrieve_feed(futclo)
-    feedlist = parse_opml('d:\\tmp\\aus-feeds.opml')
-    print(f'{len(feedlist)} feeds imported.')
+    #feedlist = parse_opml('d:\\tmp\\aus-feeds.opml')
+    #print(f'{len(feedlist)} feeds imported.')
     #retrieve_feeds(feedlist)
     #save_error_log(errorlog)
     #export_opml_to_db('d:\\tmp\\blw10.opml', db_file)
     #sd = 'https://erikhoel.substack.com'
     #k = validate_feed(sd)
     #print(k)
+    f = Feed()
+    print(f.feed_id)
 
 if __name__ == '__main__':
     main()

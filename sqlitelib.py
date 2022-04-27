@@ -85,8 +85,7 @@ def calc_limit_date(instr):
         for k, v in timediffs.items():
             if k in instr:
                 return v
-    else:
-        return 99999
+    return 99999
 
 def text_search(srchtext, curs, conn, limit=None, datelimit=None, feed_id=None):
     # search scores?
@@ -129,7 +128,8 @@ def write_post(post, curs=None, conn=None):
     if not curs:
         curs, conn = connect_DB(filename)
 
-    inpost = post.p_id, post.feed_id, post.title, post.author, post.url, post.date, post.content, 'None'
+    inpost = post.p_id, post.feed_id, post.title, post.author, post.url, post.date,\
+             post.content, 'None'
 
     #inpost = 'idtext', 'feedidtext', 'titletext', 'authortext', 'urltext', 'datetext', 'contenttext', 'flags'
 
@@ -387,19 +387,19 @@ def update_feed_folder(feed_id, new_folder, curs, conn):
         print(f'Changed folder for {feed_id} to {new_folder}.')
 
 def main():
-    dbfile = 'd:\\tmp\\posts.db'
-    curs, conn = connect_DB(dbfile)
-    #create_DB()
+    #dbfile = 'd:\\tmp\\posts.db'
+    #curs, conn = connect_DB(dbfile)
+    create_DB('pytest.db')
     #get_data(curs, conn)
-    #newpost = Post(2, 'The Hypogeum', 'Fathr Inire', '2021-06-08', 'Certainly it is desirable to maintain in being a movement that has proved so useful in the past, and as long as the mirrors of the caller Hethor remain unbroken, she provides it with a plausible commander.')
+    #newpost = Post(2, 'The Hypogeum', 'Father Inire', '2021-06-08', 'Certainly it is desirable to maintain in being a movement that has proved so useful in the past, and as long as the mirrors of the caller Hethor remain unbroken, she provides it with a plausible commander.')
     #write_post(dbfile, 'vfdvdf', curs, conn)
     #posttest = get_most_recent(5, curs, conn)
     #k = count_all_unread()
     #print(posttest)
     #mark_old_as_read(3, curs, conn)
     #vacuum(conn)
-    k = text_search('new world', curs, conn, None, None)
-    print(k)
+    #k = text_search('new world', curs, conn, None, None)
+    #print(k)
     #  feed.feed_id, feed.title, feed.folder, feed.f_type, feed.rss_url, feed.html_url, str(feed.tags))
     #newfeed = rsslib.Feed('aaa Feed ID', 'aaa Feed title', 'folder', 'rss', 'http://whatever.com',
                            #'http://direct.com', '[]')
@@ -414,6 +414,7 @@ def main():
     #print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
     #update_feed_folder('http://esr.ibiblio.org', 'News', curs, conn)
+    connect_DB('random_text')
 
 if __name__ == '__main__':
     main()

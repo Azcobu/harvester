@@ -10,32 +10,31 @@
 # no posts in last X years.
 # delete folder and all feeds in it?
 
+import sys
+import threading
+import urllib.request
 from functools import partial
 from os import listdir, path, getcwd
 from datetime import datetime
-from dateutil import tz
 from queue import Queue
 from subprocess import Popen
+from dateutil import tz
 from dateutil.parser import *
+
 from PyQt5 import QtGui
-from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
-                         pyqtSlot)
+from PyQt5.QtCore import Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap
 from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
-                             QTreeWidgetItem, QMenu, QAction, QDialog,
-                             QLineEdit, QLabel, QMessageBox, QInputDialog, QWidget,
-                             QToolBar, QHBoxLayout, QShortcut, QCheckBox, QFileDialog)
+    QTreeWidgetItem, QMenu, QAction, QDialog, QLineEdit, QLabel, QMessageBox,
+    QInputDialog, QWidget, QToolBar, QHBoxLayout, QShortcut, QCheckBox, QFileDialog)
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from ui.harvester_main import Ui_MainWindow
 from ui.harvsearch import Ui_frmSearch
 
-import sys
-import threading
-import urllib.request
 import rsslib
 import sqlitelib
-from newsub import NewSubDialog
 import resources.breeze_resources
+from newsub import NewSubDialog
 
 class CustomWebEnginePage(QWebEnginePage):
     # Custom WebEnginePage to customize how we handle link navigation
@@ -76,13 +75,13 @@ class ReaderUI(QMainWindow):
 
         self.ui.buttonNextPage = QPushButton('')
         #self.ui.buttonNextPage.setIcon(QIcon(':/icons/icons/icons8-fast-forward-100.png'))
-        self.ui.buttonNextPage.setStyleSheet("border-image : "
-                                             "url(:/icons/icons/icons8-fast-forward-100.png);")
+        self.ui.buttonNextPage.setStyleSheet(
+            "border-image : url(:/icons/icons/icons8-fast-forward-100.png);")
         self.ui.labelPage = QLabel()
         self.ui.buttonPrevPage = QPushButton('')
         #self.ui.buttonPrevPage.setIcon(QIcon(':/icons/icons/icons8-rewind-100.png'))
-        self.ui.buttonPrevPage.setStyleSheet("border-image : "
-                                             "url(:/icons/icons/icons8-rewind-100.png);")
+        self.ui.buttonPrevPage.setStyleSheet(
+            "border-image : url(:/icons/icons/icons8-rewind-100.png);")
 
         self.ui._search_panel = SearchPanel()
         self.ui.search_toolbar = QToolBar()
@@ -1059,15 +1058,6 @@ def load_css_file():
             return cssfile.read()
     except Exception as err:
         print(f'Loading CSS file failed - {err}')
-
-def load_data(infile):
-    try:
-        with open(infile, 'r') as infile:
-            indata = infile.read()
-        self.output('Data loaded.')
-        return indata
-    except Exception as err:
-        print(f'{err}')
 
 def exception_hook(exctype, value, traceback):
     print(exctype, value, traceback)
