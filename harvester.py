@@ -1052,12 +1052,17 @@ def convert_isodate_to_fulldate(isodate):
         return isodate
 
 def load_css_file():
-    cssfilename = path.join(getcwd(), 'resources', 'pagestyle.css')
-    try:
-        with open(cssfilename, 'r') as cssfile:
-            return cssfile.read()
-    except Exception as err:
-        print(f'Loading CSS file failed - {err}')
+    csspaths = [path.join(getcwd(), 'pagestyle.css'),
+                path.join(getcwd(), 'resources', 'pagestyle.css')]
+    for cssfilename in csspaths:
+        if path.exists(cssfilename):
+            try:
+                with open(cssfilename, 'r') as cssfile:
+                    return cssfile.read()
+            except Exception as err:
+                print(f'Loading CSS file failed - {err}')
+    else:
+        print('Unable to locate pagestyle.css.')
 
 def exception_hook(exctype, value, traceback):
     print(exctype, value, traceback)

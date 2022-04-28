@@ -103,7 +103,7 @@ def text_search(srchtext, curs, conn, limit=None, datelimit=None, feed_id=None):
     if datelimit:
         query += f'AND `date` >= date("now", "-{datelimit} day") '
     query += f'ORDER BY `date` DESC'
-    if limit:
+    if limit and limit > 0:
         query += f' LIMIT {limit} '
     try:
         curs.execute(query, (srchtext,))
@@ -137,7 +137,6 @@ def write_post(post, curs=None, conn=None):
                  'url', 'date', 'content', 'flags') "
                   "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", inpost)
     conn.commit()
-    conn.close()
 
 def write_post_list(postlist, curs=None, conn=None):
     postssql = []
@@ -388,8 +387,8 @@ def update_feed_folder(feed_id, new_folder, curs, conn):
 
 def main():
     #dbfile = 'd:\\tmp\\posts.db'
-    #curs, conn = connect_DB(dbfile)
-    create_DB('pytest.db')
+    dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
+    curs, conn = connect_DB(dbfile)
     #get_data(curs, conn)
     #newpost = Post(2, 'The Hypogeum', 'Father Inire', '2021-06-08', 'Certainly it is desirable to maintain in being a movement that has proved so useful in the past, and as long as the mirrors of the caller Hethor remain unbroken, she provides it with a plausible commander.')
     #write_post(dbfile, 'vfdvdf', curs, conn)
@@ -410,11 +409,10 @@ def main():
     #print(k)
     #print(usage_report(curs, conn))
     #print(count_filtered_unread('eco', curs, conn))
-    #print(text_search('kryl', curs, conn, 50))  # kryl
+    print(text_search('symbol', curs, conn, None, 'month'))  # kryl
     #print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
     #update_feed_folder('http://esr.ibiblio.org', 'News', curs, conn)
-    connect_DB('random_text')
 
 if __name__ == '__main__':
     main()
