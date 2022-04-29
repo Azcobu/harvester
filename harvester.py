@@ -267,9 +267,10 @@ class ReaderUI(QMainWindow):
 
     def move_to_folder(self, feed, folder_name):
         self.output(f'Moving feed {feed.feed_id} to {folder_name} folder.')
-        sqlitelib.update_feed_folder(feed.feed_id, folder_name, self.db_curs, self.db_conn)
-        feed.folder = folder_name
-        self.setup_tree()
+        moved = sqlitelib.update_feed_folder(feed.feed_id, str(folder_name), self.db_curs, self.db_conn)
+        if moved:
+            feed.folder = folder_name
+            self.setup_tree()
 
     def movefolder(self, folder_name):
         self.ui.statusbar.showMessage(f'Move current feed to this folder.')
@@ -363,12 +364,12 @@ class ReaderUI(QMainWindow):
         if not db_filename:
             db_filename = self.locate_db()
         self.output(f'Loading DB file {db_filename}')
-        db = sqlitelib.connect_DB(db_filename)
+        db = sqlitelib.connect_DB_file(db_filename)
         while not db:
             self.output(f'Attempt to load DB file {db_filename} failed.')
             self.db_filename = None
             db_filename = self.locate_db()
-            db = sqlitelib.connect_DB(db_filename)
+            db = sqlitelib.connect_DB_file(db_filename)
 
         self.db_curs, self.db_conn = db[0], db[1]
         self.db_filename = db_filename
@@ -515,7 +516,7 @@ class ReaderUI(QMainWindow):
                         pass
                     '''
                     self.db_filename = new_db
-                    self.db_curs, self.db_conn = sqlitelib.connect_DB(new_db)
+                    self.db_curs, self.db_conn = sqlitelib.connect_DB_file(new_db)
                     self.init_data()
                 return self.db_filename
 

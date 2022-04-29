@@ -9,22 +9,7 @@ import rsslib
 from datetime import datetime, timezone, date, timedelta
 from os import path
 
-'''
-class Post:
-    def __init__(self, post_id, site, author, date, text, flags):
-        self.post_id = post_id
-        self.site = site
-        self.author = author
-        self.date = date
-        self.text = text
-        self.flags = flags
-
-    def __repr__(self):
-        return (f'ID: {self.post_id}, Site: {self.site}, Author: {self.author}, '
-                f'Date: {self.date}, Text: {self.text}, Flags:{self.flags}')
-'''
-
-def connect_DB(db_file):
+def connect_DB_file(db_file):
     if not db_file or not path.exists(db_file):
         print(f'DB file {db_file} could not be found.')
         return None
@@ -39,11 +24,11 @@ def connect_DB(db_file):
 
 def create_DB(filename):
     conn = sqlite3.connect(filename)
-    c = conn.cursor()
+    curs = conn.cursor()
 
     try:
         # Create table
-        c.execute(
+        curs.execute(
         '''CREATE TABLE feeds (
             id        text primary key,
             title     text,
@@ -57,7 +42,7 @@ def create_DB(filename):
             )
         ''')
         # most fields are self explanatory, but flags = None/0 for unread posts, and 1 for read
-        c.execute(
+        curs.execute(
         '''CREATE TABLE posts (
             id      text primary key,
             feed_id text,
@@ -69,22 +54,19 @@ def create_DB(filename):
             flags   text
             )
         ''')
-        c.execute("CREATE INDEX post_dates ON posts (date);")
-        c.execute("CREATE INDEX post_feed_ids ON posts (feed_id);")
-        c.execute("CREATE INDEX post_flags ON posts (flags);")
+        curs.execute("CREATE INDEX post_dates ON posts (date);")
+        curs.execute("CREATE INDEX post_feed_ids ON posts (feed_id);")
+        curs.execute("CREATE INDEX post_flags ON posts (flags);")
         conn.commit()
-        conn.close()
-        return True
+        return curs, conn
     except Exception as err:
         print(f'Error creating DB {filename} - {err}')
         return False
 
 def calc_limit_date(instr):
-    if instr:
-        timediffs = {'day':1, 'week':7, 'month':31, 'year':365}
-        for k, v in timediffs.items():
-            if k in instr:
-                return v
+    timediffs = {'day':1, 'week':7, 'month':31, 'year':365}
+    if instr in timediffs.keys():
+        return timediffs[instr]
     return 99999
 
 def text_search(srchtext, curs, conn, limit=None, datelimit=None, feed_id=None):
@@ -193,15 +175,6 @@ def get_feed_posts(feed_id, curs=None, conn=None):
     except Exception as err:
         print(f'Error retrieving posts for {feed_id} - {err}')
 
-def get_folder_posts(folder, curs=None, conn=None):
-    try:
-        query = f'SELECT * FROM `posts` WHERE `folder` = "{folder}" ORDER BY `date` DESC;'
-        curs.execute(query)
-        results = curs.fetchall()
-        return convert_results_to_postlist(results)
-    except Exception as err:
-        print(f'Error retrieving posts for {feed_id} - {err}')
-
 def count_all_unread(curs=None, conn=None):
     try:
         query = ("SELECT p.feed_id, COUNT(*) FROM `posts` p WHERE p.flags = 'None' GROUP BY p.feed_id;")
@@ -236,7 +209,6 @@ def get_most_recent(numposts, curs=None, conn=None):
 
 def vacuum(conn):
     conn.execute('VACUUM')
-    conn.close()
     print('DB maintenance complete.')
 
 def mark_old_as_read(numdays, curs=None, conn=None):
@@ -338,7 +310,7 @@ def list_feeds_over_post_count(maxposts, curs, conn, report=False):
 
 def list_feeds_under_post_count(maxposts, curs, conn, report=False):
     q = ('SELECT f.id, f.title, COUNT(p.id) FROM `posts` p JOIN `feeds` f ON f.id = p.feed_id '
-         'GROUP BY p.feed_id HAVING count(p.id) <= ? ORDER BY COUNT(p.id) DESC;')
+         'GROUP BY p.feed_id HAVING count(p.id) < ? ORDER BY COUNT(p.id) DESC;')
     curs.execute(q, (maxposts,))
     if report:
         return {x[1]:x[2] for x in curs.fetchall()}
@@ -376,19 +348,24 @@ def run_arbitrary_sql(query, curs, conn):
     curs.execute(query)
 
 def update_feed_folder(feed_id, new_folder, curs, conn):
-    q = 'UPDATE `feeds` SET `folder` = ? WHERE `id` = ?'
-    try:
-        curs.execute(q, (new_folder, feed_id))
-        conn.commit()
-    except Exception as err:
-        print(f'Error changing folder for {feed_id} - {err}')
-    else:
-        print(f'Changed folder for {feed_id} to {new_folder}.')
+    if new_folder:
+        new_folder = str(new_folder)
+        q = 'UPDATE `feeds` SET `folder` = ? WHERE `id` = ?'
+        try:
+            curs.execute(q, (new_folder, feed_id))
+            conn.commit()
+        except Exception as err:
+            print(f'Error changing folder for {feed_id} - {err}')
+            return False
+        else:
+            print(f'Changed folder for {feed_id} to {new_folder}.')
+            return True
+    return False
 
 def main():
-    #dbfile = 'd:\\tmp\\posts.db'
-    dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
-    curs, conn = connect_DB(dbfile)
+    dbfile = 'd:\\tmp\\posts.db'
+    #dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
+    curs, conn = connect_DB_file(dbfile)
     #get_data(curs, conn)
     #newpost = Post(2, 'The Hypogeum', 'Father Inire', '2021-06-08', 'Certainly it is desirable to maintain in being a movement that has proved so useful in the past, and as long as the mirrors of the caller Hethor remain unbroken, she provides it with a plausible commander.')
     #write_post(dbfile, 'vfdvdf', curs, conn)
@@ -408,11 +385,10 @@ def main():
     #k = find_date_all_feeds_last_read(curs, conn)
     #print(k)
     #print(usage_report(curs, conn))
-    #print(count_filtered_unread('eco', curs, conn))
-    print(text_search('symbol', curs, conn, None, 'month'))  # kryl
+    #print(text_search('symbol', curs, conn, None, 'month'))  # kryl
     #print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
-    #update_feed_folder('http://esr.ibiblio.org', 'News', curs, conn)
+    update_feed_folder('http://esr.ibiblio.org', 'Tech', curs, conn)
 
 if __name__ == '__main__':
     main()
