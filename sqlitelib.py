@@ -363,9 +363,9 @@ def update_feed_folder(feed_id, new_folder, curs, conn):
     return False
 
 def main():
-    dbfile = 'd:\\tmp\\posts.db'
+    #dbfile = 'd:\\tmp\\posts.db'
     #dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
-    curs, conn = connect_DB_file(dbfile)
+    #curs, conn = connect_DB_file(dbfile)
     #get_data(curs, conn)
     #newpost = Post(2, 'The Hypogeum', 'Father Inire', '2021-06-08', 'Certainly it is desirable to maintain in being a movement that has proved so useful in the past, and as long as the mirrors of the caller Hethor remain unbroken, she provides it with a plausible commander.')
     #write_post(dbfile, 'vfdvdf', curs, conn)
@@ -388,7 +388,7 @@ def main():
     #print(text_search('symbol', curs, conn, None, 'month'))  # kryl
     #print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
-    update_feed_folder('http://esr.ibiblio.org', 'Tech', curs, conn)
+    a, b = create_DB(':memory:')
 
 if __name__ == '__main__':
     main()
