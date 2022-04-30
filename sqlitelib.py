@@ -388,7 +388,6 @@ def main():
     #print(text_search('symbol', curs, conn, None, 'month'))  # kryl
     #print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
-    a, b = create_DB(':memory:')
 
 if __name__ == '__main__':
     main()

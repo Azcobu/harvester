@@ -37,9 +37,9 @@ def db():
     yield test_db
     test_db.conn.close()
 
-def db_create(db):
-    assert isinstance(db.curs) == sqlite3.Cursor
-    assert isinstance(db.conn) == sqlite3.Connection
+def test_db_create(db):
+    assert isinstance(db.curs, sqlite3.Cursor)
+    assert isinstance(db.conn, sqlite3.Connection)
 
 def test_repeated_feed_write_ignored(db):
     newfeed = rsslib.Feed("http://new-sun.gov", "New Sun", "Main Folder",
@@ -136,7 +136,6 @@ def test_delete_all_but_last_n(db):
     assert sqlitelib.count_posts("http://new-sun.gov", db.curs, db.conn) == 0
 
 def test_mass_delete_all_but_last_n(db):
-
     assert sqlitelib.list_feeds_under_post_count(5, db.curs, db.conn) ==\
         ["http://new-sun.gov"]
     assert sqlitelib.list_feeds_under_post_count(5, db.curs, db.conn, True) ==\
@@ -166,7 +165,7 @@ def test_find_inactive_feeds(db):
     }
     assert sqlitelib.find_inactive_feeds(2020, db.curs, db.conn) == {}
 
-def test_usage_report(db):
+def test_update_feed_folder(db):
     new_folder = "New Folder Name"
     assert sqlitelib.update_feed_folder("http://new-sun.gov", "", db.curs,
                                         db.conn) == False
@@ -174,9 +173,13 @@ def test_usage_report(db):
                                         db.conn) == True
     fl = sqlitelib.retrieve_feedlist(db.curs, db.conn)
     assert fl[0].folder == new_folder
-
     new_folder = 127
     assert sqlitelib.update_feed_folder("http://new-sun.gov", new_folder, db.curs,
                                         db.conn) == True
     fl = sqlitelib.retrieve_feedlist(db.curs, db.conn)
     assert fl[0].folder == str(new_folder)
+
+def test_usage_report(db):
+    strlen = sum(len(x.content) for x in sqlitelib.get_feed_posts("http://new-sun.gov",
+                 db.curs, db.conn))
+    assert sqlitelib.usage_report(db.curs, db.conn) == {'New Sun': strlen}
