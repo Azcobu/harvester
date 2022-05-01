@@ -363,6 +363,7 @@ def update_feed_folder(feed_id, new_folder, curs, conn):
     return False
 
 def main():
+    pass
     #dbfile = 'd:\\tmp\\posts.db'
     #dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
     #curs, conn = connect_DB_file(dbfile)

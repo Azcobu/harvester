@@ -289,7 +289,7 @@ def DB_writer(DB_queue, numworkers, db_filename, mainwin):
     stopsfound = 0
     postlist = []
 
-    db_curs, db_conn = sqlitelib.connect_DB(db_filename)
+    db_curs, db_conn = sqlitelib.connect_DB_file(db_filename)
 
     while stopsfound < numworkers:
         while not DB_queue.empty():
