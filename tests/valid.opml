@@ -1,0 +1,23 @@
+<opml version="1.1">
+	<head>
+		<title>Harvester Subscriptions</title>
+		<dateModified>Thu, 31 Mar 2022 03:50:47 PM </dateModified>
+	</head>
+	<body>
+		<outline text="Archaeology">
+			<outline text="Archaeology Magazine" title="Archaeology Magazine" type="rss" xmlUrl="http://www.archaeology.org/?format=feed&amp;%3btype=rss" htmlUrl="http://www.archaeology.org"/>
+			<outline text="EurekAlert! - Archaeology" title="EurekAlert! - Archaeology" type="rss" xmlUrl="http://www.eurekalert.org/rss/archaeology.xml" htmlUrl="http://www.eurekalert.org"/>
+			<outline text="Scientific American - Archaeology &amp; Paleontology" title="Scientific American - Archaeology &amp; Paleontology" type="rss" xmlUrl="http://rss.sciam.com/sciam/archaeology-and-paleontology" htmlUrl="http://www.sciam.com/"/>
+		</outline>
+		<outline text="News">
+			<outline text="Slashdot" title="Slashdot" type="rss" xmlUrl="http://rss.slashdot.org/Slashdot/slashdot" htmlUrl="http://slashdot.org/"/>
+			<outline text="The Australian | The Nation" title="The Australian | The Nation" type="rss" xmlUrl="http://feeds.feedburner.com/TheAustralianTheNationNews" htmlUrl="http://www.theaustralian.news.com.au/thenation/"/>
+			<outline text="The Economist: Science and technology" title="The Economist: Science and technology" type="rss" xmlUrl="http://www.economist.com/feeds/print-sections/80/science-and-technology.xml" htmlUrl="http://www.economist.com/"/>
+		</outline>
+		<outline text="Science news and science jobs from *New Scientist*" title="Science news and science jobs from *New Scientist*" type="rss" xmlUrl="http://feeds.newscientist.com/science-news" htmlUrl="http://www.newscientist.com/"/>
+		<outline text="The Register" title="The Register" type="rss" xmlUrl="http://www.theregister.co.uk/headlines.rss" htmlUrl="http://www.theregister.co.uk/"/>
+	</body>
+</opml>
+		
+		
+	

@@ -36,8 +36,8 @@ class Feed:
 
     def san(self, instr):
         # &apos; (') is also listed as excluded, but doesn't seem to cause any problems?
+        rep = {'&':'&amp;', '"':'&quot;', '<':'&lt;', '>':'&gt;'}
         if instr and type(instr) == str:
-            rep = {'&':'&amp;', '"':'&quot;', '<':'&lt;', '>':'&gt;'}
             for k, v in rep.items():
                 instr = instr.replace(k, v)
             return instr
@@ -62,8 +62,8 @@ class Post:
         return (f'Post: {self.title}')
 
     def strip_image_tags(self):
-        p = re.compile(r'<img.*?/>')
-        self.content = p.sub('', self.content)
+        self.content = re.sub("(<img.*?>)", "",  self.content, 0,
+            re.IGNORECASE | re.DOTALL | re.MULTILINE)
 
 def open_opml_file(infile):
     try:
@@ -314,28 +314,6 @@ def DB_writer(DB_queue, numworkers, db_filename, mainwin):
             time.sleep(1)
     DB_queue.task_done()
 
-'''
-def retrieve_feeds(feedlist, treeMain=None, flags=None):
-    q = Queue()
-    DB_queue = Queue()
-
-    numworkers = 10
-
-    listsize = len(feedlist)
-    for feed in feedlist:
-        q.put(feed)
-
-    for x in range(numworkers):
-        t = threading.Thread(target=worker, args=(listsize, x, q, DB_queue, treeMain, flags))
-        t.start()
-
-    DB_thread = threading.Thread(target=DB_writer, args=[DB_queue, numworkers])
-    DB_thread.start()
-    q.join()
-    DB_thread.join()
-    print('Feed retrieval finished.')
-'''
-
 def check_feed(feed_url):
     # returns either a Feed object or False
     # feed_id, title=title, folder=None, f_type, rss_url, html_url=link, tags, favicon
@@ -376,11 +354,6 @@ def main():
     #retrieve_feeds(feedlist)
     #save_error_log(errorlog)
     #export_opml_to_db('d:\\tmp\\blw10.opml', db_file)
-    #sd = 'https://erikhoel.substack.com'
-    #k = validate_feed(sd)
-    #print(k)
-    f = Feed()
-    print(f.feed_id)
 
 if __name__ == '__main__':
     main()
