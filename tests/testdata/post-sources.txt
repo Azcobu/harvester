@@ -1,0 +1,16 @@
+http://astroblogger.blogspot.com/feeds/posts/default
+https://astralcodexten.substack.com/feed
+http://marginalrevolution.com/feed
+https://tagn.wordpress.com/feed/
+http://kerbaldevteam.tumblr.com/rss
+http://store.steampowered.com/feeds/newreleases.xml
+http://feeds.feedburner.com/FutilityCloset
+https://planetpython.org/rss20.xml
+https://old.reddit.com/user/cstross/.rss
+http://feeds.arstechnica.com/arstechnica/index/
+https://www.theregister.com/headlines.rss
+https://hnrss.org/frontpage
+http://esr.ibiblio.org/?feed=rss2
+https://www.ozbargain.com.au/cat/computing/feed
+https://www.raspberrypi.org/blog/feed/
+http://evebloggers.com/feed.php

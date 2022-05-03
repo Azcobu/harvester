@@ -5,6 +5,7 @@ import threading
 from queue import Queue
 import feedparser
 from dateutil.parser import *
+from datetime import datetime
 import re
 import string
 import opml
@@ -146,11 +147,11 @@ def parse_post(feed, postdata):
 
         if hasattr(postdata, 'published'):
             date = postdata['published']
-        else:
-            if hasattr(postdata, 'updated'):
-                date = postdata['updated']
-        if date:
-            date = parse_date(date) #QQQQ and if neither is found?
+        elif hasattr(postdata, 'updated'):
+            date = postdata['updated']
+        else: # fallback is to use date the post was downloaded
+            date = datetime.now().isoformat()
+        date = parse_date(date)
 
         if hasattr(postdata, 'content'):
             content = postdata['content'][0]['value']
@@ -345,7 +346,9 @@ def validate_feed(feed_url):
 
 def main():
     db_file = 'd:\\tmp\\posts.db'
-    #retrieve_feed('http://www.reddit.com/r/python/.rss')
+    #curs, conn = sqlitelib.connect_DB_file(db_file)
+    #https://apod.nasa.gov/apod.rss
+    #print(validate_feed('https://apod.nasa.gov/apod.rss'))
     #invfull = 'http://bhagpuss.blogspot.com/feeds/posts/default'
     #futclo = 'http://feeds.feedburner.com/FutilityCloset'
     #post = retrieve_feed(futclo)

@@ -1,5 +1,8 @@
 import sys
+import pickle
 import pytest
+import feedparser
+from os import listdir, path
 
 sys.path.append('..')
 import rsslib
@@ -27,6 +30,21 @@ def test_post():
 def good_opml():
     with open('valid.opml', 'r') as infile:
         return infile.read()
+
+@pytest.fixture
+def rss_feed():
+    with open('rss-feed.txt', 'r') as infile:
+        return infile.read()
+
+@pytest.fixture
+def posts():
+    """builds a list containing raw feed data strings"""
+    postlist = []
+    postfiles = sorted([x for x in listdir('testdata') if 'example-post' in x])
+    for pname in postfiles:
+        with open(path.join('testdata', pname), 'rb') as infile:
+            postlist.append(pickle.load(infile))
+    return postlist
 
 def test_feed_class_basics(good_feed):
     assert good_feed.feed_id == 'GoodFeed01'
@@ -59,3 +77,12 @@ def test_opml_parse(good_opml):
     assert sum([1 for x in f if x.folder == 'News']) == 3
     assert sum([1 for x in f if x.folder == None]) == 2
 
+@pytest.mark.parametrize("postnum, expected",
+    [(0, 'tag:blogger.com,1999:blog-7255205.post-5422949711722588281'),
+     (1, 'https://astralcodexten.substack.com/p/open-thread-222'),
+     (2, 'https://marginalrevolution.com/?p=83467'),
+     (3, 'http://tagn.wordpress.com/?p=99212'),
+     (4, 'https://kerbaldevteam.tumblr.com/post/676183007734972416')])
+def test_post_parse_id(good_feed, posts, postnum, expected):
+    p = rsslib.parse_post(good_feed, posts[postnum])
+    assert p.p_id == expected
