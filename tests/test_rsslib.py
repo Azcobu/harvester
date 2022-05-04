@@ -46,6 +46,16 @@ def posts():
             postlist.append(pickle.load(infile))
     return postlist
 
+@pytest.fixture
+def feeds():
+    """builds a list containing raw feed data strings"""
+    feedlist = []
+    feedfiles = sorted([x for x in listdir('testdata') if 'example-feed' in x])
+    for fname in feedfiles:
+        with open(path.join('testdata', fname), 'rb') as infile:
+            feedlist.append(pickle.load(infile))
+    return feedlist
+
 def test_feed_class_basics(good_feed):
     assert good_feed.feed_id == 'GoodFeed01'
     assert good_feed.title == 'Good Feed'
@@ -76,6 +86,32 @@ def test_opml_parse(good_opml):
     assert set([x.folder for x in f if x.folder]) == set(['News', 'Archaeology'])
     assert sum([1 for x in f if x.folder == 'News']) == 3
     assert sum([1 for x in f if x.folder == None]) == 2
+
+@pytest.mark.parametrize("postnum, expected",
+    [(0, 'tag:blogger.com,1999:blog-7255205.post-5422949711722588281'),
+     (1, 'https://astralcodexten.substack.com/p/open-thread-222'),
+     (2, 'https://marginalrevolution.com/?p=83467'),
+     (3, 'http://tagn.wordpress.com/?p=99212'),
+     (4, 'https://kerbaldevteam.tumblr.com/post/676183007734972416')])
+def test_post_parse_id(good_feed, posts, postnum, expected):
+    p = rsslib.parse_post(good_feed, posts[postnum])
+    assert p.p_id == expected
+
+def test_post_parsing(good_feed, posts):
+    for p in posts:
+        assert isinstance(rsslib.parse_post(good_feed, p), rsslib.Post)
+
+def test_post_parsing(good_feed, feeds):
+    for postlist in feeds:
+        for p in postlist:
+            assert isinstance(rsslib.parse_post(good_feed, p), rsslib.Post)
+
+def test_post_parse_ids(good_feed, feeds):
+    for postlist in feeds:
+        for p in postlist:
+            p = rsslib.parse_post(good_feed, p)
+            assert isinstance(p.p_id, str)
+            assert isinstance(p.p_id, str)
 
 @pytest.mark.parametrize("postnum, expected",
     [(0, 'tag:blogger.com,1999:blog-7255205.post-5422949711722588281'),

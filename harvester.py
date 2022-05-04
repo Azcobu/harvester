@@ -267,7 +267,8 @@ class ReaderUI(QMainWindow):
 
     def move_to_folder(self, feed, folder_name):
         self.output(f'Moving feed {feed.feed_id} to {folder_name} folder.')
-        moved = sqlitelib.update_feed_folder(feed.feed_id, str(folder_name), self.db_curs, self.db_conn)
+        moved = sqlitelib.update_feed_folder(feed.feed_id, str(folder_name),
+                                             self.db_curs, self.db_conn)
         if moved:
             feed.folder = folder_name
             self.setup_tree()
@@ -429,8 +430,12 @@ class ReaderUI(QMainWindow):
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
             for feed in [x for x in self.feedlist if x.folder == f]:
-                unread_count_str = f' ({unread_count[feed.feed_id]})' if feed.feed_id in unread_count else ''
-                newnode = QTreeWidgetItem(foldernode, [f'{feed.title}{unread_count_str}', feed.feed_id])
+                if feed.feed_id in unread_count:
+                    unread_count_str = f' ({unread_count[feed.feed_id]})'
+                else:
+                    unread_count_str = ''
+                newnode = QTreeWidgetItem(foldernode, [f'{feed.title}{unread_count_str}',
+                                          feed.feed_id])
                 fontweight = QFont.Bold if unread_count_str else False
                 newnode.setFont(0, QFont('Segoe UI', 10, fontweight))
                 if unread_count_str:
@@ -438,8 +443,12 @@ class ReaderUI(QMainWindow):
 
         # add folderless feeds?
         for feed in [x for x in self.feedlist if x.folder in [None, '']]:
-            unread_count_str = f' ({unread_count[feed.feed_id]})' if feed.feed_id in unread_count else ''
-            newnode = QTreeWidgetItem(self.ui.treeMain, [f'{feed.title}{unread_count_str}', feed.feed_id])
+            if feed.feed_id in unread_count:
+                unread_count_str = f' ({unread_count[feed.feed_id]})'
+            else:
+                unread_count_str = ''
+            newnode = QTreeWidgetItem(self.ui.treeMain, [f'{feed.title}{unread_count_str}',
+                      feed.feed_id])
             fontweight = QFont.Bold if unread_count_str else False
             newnode.setFont(0, QFont("Segoe UI", 10, fontweight))
             if unread_count_str: # doesn't work due to style sheet
@@ -457,7 +466,8 @@ class ReaderUI(QMainWindow):
 
     def generate_filtered_tree(self, srchtext):
         self.output(f'Searching for feeds with {srchtext} in name...')
-        unread_count_dict = sqlitelib.count_filtered_unread(srchtext, self.db_curs, self.db_conn)
+        unread_count_dict = sqlitelib.count_filtered_unread(srchtext, self.db_curs,
+                                                            self.db_conn)
         self.ui.treeMain.clear()
         srchtext = srchtext.lower()
 
@@ -467,7 +477,8 @@ class ReaderUI(QMainWindow):
                     unread_count_str = f'({unread_count_dict[feed.feed_id]})'
                 else:
                     unread_count_str = ''
-                newnode = QTreeWidgetItem(self.ui.treeMain, [f'{feed.title} {unread_count_str}', feed.feed_id])
+                newnode = QTreeWidgetItem(self.ui.treeMain,
+                          [f'{feed.title} {unread_count_str}', feed.feed_id])
                 fontweight = QFont.Bold if unread_count_str else False
                 newnode.setFont(0, QFont('Segoe UI', 10, fontweight))
                 self.ui.treeMain.addTopLevelItem(newnode)
@@ -512,7 +523,8 @@ class ReaderUI(QMainWindow):
                                   "new database? If not, the new database will be empty.",
                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
                     if load_sample == QMessageBox.Yes:
-                        #new, dupes = rsslib.import_opml_to_db(dlg[0], self.feedlist, self.db_curs, self.db_conn)
+                        #new, dupes = rsslib.import_opml_to_db(dlg[0], self.feedlist,
+                                      self.db_curs, self.db_conn)
                         pass
                     '''
                     self.db_filename = new_db
@@ -538,8 +550,6 @@ class ReaderUI(QMainWindow):
             self.ui.labelPage.setText(f'Page 1 of 1')
             self.handle_nextprev_buttons()
         elif node_id == 'folder':
-            # two options - either expand whole folder as if expand widget was clicked
-            # or generate new sorted page for all feeds in that folder. Or both?
             self.setWindowTitle(f'{self.version_str}')
             curr_node = self.ui.treeMain.findItems(node_title, Qt.MatchContains, 0)[0]
             curr_state = curr_node.isExpanded()
@@ -653,7 +663,8 @@ class ReaderUI(QMainWindow):
         dlg = QFileDialog.getOpenFileName(self, "Open OPML File", "", \
             "OPML Files (*.opml);;All files (*.*)")
         if dlg[0] != '':
-            new, dupes = rsslib.import_opml_to_db(dlg[0], self.feedlist, self.db_curs, self.db_conn)
+            new, dupes = rsslib.import_opml_to_db(dlg[0], self.feedlist, self.db_curs,
+                                                  self.db_conn)
             if new:
                 self.load_feed_data()
                 self.setup_tree()
@@ -716,7 +727,8 @@ class ReaderUI(QMainWindow):
         srchdialog.exec()
         if self.srchtext:
             self.output(f'Searching feeds DB for "{self.srchtext}" in {self.srchtime.lower()}.')
-            results = sqlitelib.text_search(self.srchtext, self.db_curs, self.db_conn, 100, self.srchtime)
+            results = sqlitelib.text_search(self.srchtext, self.db_curs, self.db_conn,
+                                            100, self.srchtime)
             if results:
                 self.ui.statusbar.showMessage(f'{len(results)} results found.')
                 posthtml = self.generate_posts_page(results)
@@ -732,14 +744,17 @@ class ReaderUI(QMainWindow):
             srchdialog = SrchDialog(self)
             srchdialog.exec()
             if self.srchtext:
-                self.output(f'Searching {node_title} for "{self.srchtext}" in {self.srchtime.lower()}.')
-                results = sqlitelib.text_search(self.srchtext, self.db_curs, self.db_conn, 100, self.srchtime, node_id)
+                self.output(f'Searching {node_title} for "{self.srchtext}" in '
+                            f'{self.srchtime.lower()}.')
+                results = sqlitelib.text_search(self.srchtext, self.db_curs,
+                                                self.db_conn, 100, self.srchtime, node_id)
                 if results:
                     self.ui.statusbar.showMessage(f'{len(results)} results found.')
                     posthtml = self.generate_posts_page(results)
                     self.ui.webEngine.setHtml(posthtml)
                 else:
-                    self.ui.statusbar.showMessage(f'No results found for search "{self.srchtext}"')
+                    self.ui.statusbar.showMessage(f'No results found for search '
+                                                  f'"{self.srchtext}"')
         else:
             self.ui.statusbar.showMessage(f'No feed currently selected.')
 
@@ -750,8 +765,8 @@ class ReaderUI(QMainWindow):
     def unsubscribe_feed(self):
         if self.node_id not in ['folder', 'reddfile']:
             confirm = QMessageBox.question(self, "Unsubscribe from feed?",
-                     "This will unsubscribe you from the feed and delete all saved posts. Are you sure?",
-                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                     "This will unsubscribe you from the feed and delete all saved posts. "
+                     "Are you sure?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if confirm == QMessageBox.Yes:
                 delfeed = [x for x in self.feedlist if x.feed_id == self.node_id][0]
                 self.feedlist.remove(delfeed)
@@ -768,12 +783,14 @@ class ReaderUI(QMainWindow):
             anchor = (f'<a href="#anchor{anchor_id+1}"><img alt="Next" '
                        'style="float:right" title="Next post" '
                        'src="qrc:/icons/icons/icons8-download-100-3.png" '
-                      f'width="{self.pagenav_icon_size}" height="{self.pagenav_icon_size}"></a>')
+                      f'width="{self.pagenav_icon_size}" '
+                      f'height="{self.pagenav_icon_size}"></a>')
         if anchor_id != 0:
             anchor += (f'<a href="#anchor{anchor_id-1}"><img alt="Prev" '
                         'style="float:right" title="Previous post" '
                         'src="qrc:/icons/icons/icons8-upload-100-2.png" '
-                       f'width="{self.pagenav_icon_size}" height="{self.pagenav_icon_size}"></a>')
+                       f'width="{self.pagenav_icon_size}" '
+                       f'height="{self.pagenav_icon_size}"></a>')
         return anchor
 
     def generate_posts_page(self, results=None):
@@ -789,7 +806,8 @@ class ReaderUI(QMainWindow):
 
         startpost = (self.curr_page - 1) * self.page_size
         endpost = self.curr_page * self.page_size
-        self.max_page = int(len(results) / self.page_size) + (len(results) % self.page_size > 0)
+        self.max_page = int(len(results) / self.page_size) +\
+                        (len(results) % self.page_size > 0)
         self.max_page = max(self.max_page, 1)
         self.handle_nextprev_buttons()
         results = results[startpost:endpost]
@@ -804,7 +822,8 @@ class ReaderUI(QMainWindow):
                 anchortext = self.generate_jump_buttons(anchor_id)
                 isread = 'unread' if post.flags == 'None' else 'read'
                 page.append('<div class="post">'
-                            f'<a id="anchor{anchor_id}" class="{isread}" href="{post.url}">{post.title}</a> '
+                            f'<a id="anchor{anchor_id}" class="{isread}" '
+                            f'href="{post.url}">{post.title}</a> '
                             f' {anchortext} '
                             f'<h5>{post.author} on {convdate}</h5>'
                             f'<p>{post.content}'
@@ -843,12 +862,14 @@ class ReaderUI(QMainWindow):
         if self.curr_page == self.max_page:
             self.ui.buttonNextPage.setStyleSheet("")
         else:
-            self.ui.buttonNextPage.setStyleSheet("border-image : url(:/icons/icons/icons8-fast-forward-100.png);")
+            self.ui.buttonNextPage.setStyleSheet("border-image : "
+                "url(:/icons/icons/icons8-fast-forward-100.png);")
 
         if self.curr_page == 1:
             self.ui.buttonPrevPage.setStyleSheet("")
         else:
-            self.ui.buttonPrevPage.setStyleSheet("border-image : url(:/icons/icons/icons8-rewind-100.png);")
+            self.ui.buttonPrevPage.setStyleSheet("border-image : "
+                "url(:/icons/icons/icons8-rewind-100.png);")
 
     def new_folder(self):
         newfolder, ok = QInputDialog.getText(self, 'New Folder Name', 'Enter folder name:')
@@ -940,7 +961,8 @@ class ReaderUI(QMainWindow):
         about.setWindowTitle("About Harvester")
         about.setTextFormat(Qt.RichText)
         about.setIconPixmap(QPixmap(':/icons/icons/icons8-combine-harvester-100-2.png'))
-        about.setText('<h4>Harvester 0.1</h4>A cross-platform RSS reader.<p style="margin-bottom: -20px;">Credits:'
+        about.setText('<h4>Harvester 0.1</h4>A cross-platform RSS reader.'
+                      '<p style="margin-bottom: -20px;">Credits:'
                       '<ul style="margin-left: -30px; margin-top: -20px;">'
                       '<li>Icons from <a href="https://icons8.com">Icons8</a>'
                       '<li>Dark theme is <a href="https://github.com/ColinDuquesnoy/'

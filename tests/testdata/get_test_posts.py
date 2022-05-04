@@ -24,8 +24,8 @@ def save_posts(feedlist):
         if parsedfeed.entries:
             post = choice(parsedfeed.entries)
         '''
-        fname = f'example-post{counter:02}.txt'
-        pickled = pickle.dumps(parsedfeed.entries[0])
+        fname = f'example-feed{counter:02}.txt'
+        pickled = pickle.dumps(parsedfeed.entries)
         save_file(fname, pickled)
 
 def main():
