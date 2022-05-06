@@ -22,7 +22,8 @@ from dateutil import tz
 from dateutil.parser import *
 
 from PyQt5 import QtGui
-from PyQt5.QtCore import Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
+                          pyqtSlot, QThreadPool)
 from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap
 from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
     QTreeWidgetItem, QMenu, QAction, QDialog, QLineEdit, QLabel, QMessageBox,
@@ -35,6 +36,7 @@ import rsslib
 import sqlitelib
 import resources.breeze_resources
 from newsub import NewSubDialog
+import downloader
 
 class CustomWebEnginePage(QWebEnginePage):
     # Custom WebEnginePage to customize how we handle link navigation
@@ -104,6 +106,8 @@ class ReaderUI(QMainWindow):
         self.ui.treeMain.itemExpanded.connect(lambda node: self.collapse_other_folders(node))
         self.ui.treeMain.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.treeMain.customContextMenuRequested.connect(self.tree_context_menu)
+        self.threadpool = QThreadPool()
+        self.threadpool.setMaxThreadCount(10)
 
         #self.ui.progressBar = QProgressBar()
         #self.ui.statusbar.addPermanentWidget(self.ui.progressBar)
@@ -616,9 +620,7 @@ class ReaderUI(QMainWindow):
 
     def update_all_feeds(self):
         flags = Qt.MatchContains | Qt.MatchRecursive
-        #tree = self.ui.treeMain
         mainwin = self.ui
-        #rsslib.retrieve_feeds(self.feedlist[:5], self.ui.treeMain, flags)
 
         if not is_internet_on():
             self.ui.statusbar.showMessage(f'Not connected to the Internet.')
@@ -634,10 +636,16 @@ class ReaderUI(QMainWindow):
         for feed in self.feedlist:
             q.put(feed)
 
+        '''
         for x in range(numworkers):
             t = threading.Thread(target=rsslib.worker, args=(listsize, x, q, DB_queue,\
                                  mainwin, flags, self.update_icon))
             t.start()
+        '''
+        #print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
+        for x in range(numworkers):
+            worker = downloader.Worker(listsize, x, q, DB_queue)
+            self.threadpool.start(worker)
 
         DB_thread = threading.Thread(target=rsslib.DB_writer,
                                      args=[DB_queue, numworkers, self.db_filename, mainwin])

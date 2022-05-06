@@ -226,6 +226,7 @@ def import_feeds_from_db(db_curs, db_file):
 def export_feeds_to_opml(feedlist):
     pass
 
+'''
 def worker(listsize, workernum, q, DB_queue, mainwin=None, flags=None, upicon=None):
     # QQQQ should update the tree items with new font and number of new posts too
     # approaches - either compare dates of parsed posts with latest read date from
@@ -276,15 +277,10 @@ def worker(listsize, workernum, q, DB_queue, mainwin=None, flags=None, upicon=No
             #if unread_count:
             #    node.setText(0, f'{currfeed.title} ({unread_count})')
             #    node.setFont(0, QFont('Segoe UI', 10, QFont.Bold))
-        '''
-        try:
-            mainwin.progressBar.setValue(feednum)
-        except Exception as err:
-            print(err)
-        '''
 
         q.task_done()
     DB_queue.put('stopsignal')
+'''
 
 def DB_writer(DB_queue, numworkers, db_filename, mainwin):
     stopsfound = 0
