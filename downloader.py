@@ -3,9 +3,10 @@ from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QObject, QRunnable)
 import rsslib
 
 class WorkerSignals(QObject):
-    finished = pyqtSignal()
+    started = pyqtSignal(tuple)
+    finished = pyqtSignal(tuple)
     error = pyqtSignal(tuple)
-    result = pyqtSignal(object)
+    result = pyqtSignal(tuple)
 
 class Worker(QRunnable):
     def __init__(self, listsize, workernum, url_queue, db_queue):
@@ -21,7 +22,10 @@ class Worker(QRunnable):
         while not self.url_queue.empty():
             currfeed = self.url_queue.get()
             feednum = self.listsize - self.url_queue.qsize()
-            print(f'{feednum}/{self.listsize}: Worker {self.workernum+1} retrieving {currfeed.title}')
+            msg = (f'{feednum}/{self.listsize}: Worker {self.workernum+1} '
+                   f'retrieving {currfeed.title}')
+            print(msg)
+            self.signals.started.emit((msg, currfeed.title))
             try:
                 parsedfeed = feedparser.parse(currfeed.rss_url)
             except Exception as err:
@@ -39,7 +43,8 @@ class Worker(QRunnable):
                 self.url_queue.task_done()
             #self.signals.result.emit(result) # Return the result of the process
             finally:
-                self.signals.finished.emit() # Done
+                num_new = 0
+                self.signals.finished.emit((num_new, currfeed.title)) # Done
         self.db_queue.put('stopsignal')
 
 if __name__ == '__main__':

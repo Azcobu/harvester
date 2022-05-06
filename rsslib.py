@@ -198,10 +198,6 @@ def save_error_log(errlog):
     with open('d:\\tmp\\rss-errors.txt', 'w') as outfile:
         outfile.write(errlog)
 
-def find_node(tree, flags, target):
-    # should be feed ID column 1, but can't get that to work
-    return tree.findItems(target, flags, 0)[0]
-
 def import_opml_to_db(opmlfile, curr_feeds, db_curs, db_conn):
     trimfeeds = []
     dupes = 0

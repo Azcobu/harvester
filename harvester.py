@@ -108,6 +108,7 @@ class ReaderUI(QMainWindow):
         self.ui.treeMain.customContextMenuRequested.connect(self.tree_context_menu)
         self.threadpool = QThreadPool()
         self.threadpool.setMaxThreadCount(10)
+        self.threadpool.setExpiryTimeout(10000)
 
         #self.ui.progressBar = QProgressBar()
         #self.ui.statusbar.addPermanentWidget(self.ui.progressBar)
@@ -618,8 +619,31 @@ class ReaderUI(QMainWindow):
         #self.ui.webEngine.findText("new", flags)
         self.ui.search_toolbar.show()
 
-    def update_all_feeds(self):
+    def update_tree_node_background(self, feed_title, mode):
         flags = Qt.MatchContains | Qt.MatchRecursive
+        try:
+            # QQQQ this should eventually be replaced by the new feeddict to directly
+            # specify the node
+            node = self.ui.treeMain.findItems(feed_title, flags, 0)[0]
+            if node:
+                if mode == 'downloading':
+                    node.setBackground(0, QtGui.QColor(16, 16, 128, 255))
+                    #node.setBackground(0, QtGui.QColor(61, 174, 233, 255))
+                elif mode == 'finished':
+                    node.setData(0, Qt.BackgroundRole, None)
+        except Exception as err:
+            pass
+
+    def node_started_downloading_update_ui(self, data):
+        msg, feed_title = data[0], data[1]
+        self.ui.statusbar.showMessage(msg)
+        self.update_tree_node_background(feed_title, 'downloading')
+
+    def node_finished_downloading_update_ui(self, indata):
+        num_new, feed_title = indata[0], indata[1]
+        self.update_tree_node_background(feed_title, 'finished')
+
+    def update_all_feeds(self):
         mainwin = self.ui
 
         if not is_internet_on():
@@ -628,27 +652,28 @@ class ReaderUI(QMainWindow):
 
         q = Queue()
         DB_queue = Queue()
-        numworkers = 10
+        #numworkers = 10
         listsize = len(self.feedlist)
         #self.ui.progressBar.setMinimum(0)
         #self.ui.progressBar.setMaximum(listsize)
 
-        for feed in self.feedlist:
+        # generate queue in tree display order rather than alphabetically
+        view_sort = sorted([x for x in self.feedlist if x.folder],
+                    key = lambda x: (x.folder, x.title.lower()))
+        view_sort += sorted([x for x in self.feedlist if not x.folder],
+                    key = lambda x: x.title.lower())
+        for feed in view_sort:
             q.put(feed)
 
-        '''
-        for x in range(numworkers):
-            t = threading.Thread(target=rsslib.worker, args=(listsize, x, q, DB_queue,\
-                                 mainwin, flags, self.update_icon))
-            t.start()
-        '''
-        #print("Multithreading with maximum %d threads" % self.threadpool.maxThreadCount())
-        for x in range(numworkers):
+        for x in range(self.threadpool.maxThreadCount()):
             worker = downloader.Worker(listsize, x, q, DB_queue)
+            worker.signals.started.connect(self.node_started_downloading_update_ui)
+            worker.signals.finished.connect(self.node_finished_downloading_update_ui)
             self.threadpool.start(worker)
 
-        DB_thread = threading.Thread(target=rsslib.DB_writer,
-                                     args=[DB_queue, numworkers, self.db_filename, mainwin])
+        DB_thread = threading.Thread(target=rsslib.DB_writer, args=[DB_queue,
+                                     self.threadpool.maxThreadCount(),
+                                     self.db_filename, mainwin])
         DB_thread.start()
 
     def new_sub(self):
