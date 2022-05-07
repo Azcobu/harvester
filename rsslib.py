@@ -290,7 +290,7 @@ def DB_writer(DB_queue, numworkers, db_filename, mainwin):
             if currpost == "stopsignal":
                 stopsfound += 1
                 print(f'Stop signal {stopsfound} found.')
-                if stopsfound == 10:
+                if stopsfound == numworkers:
                     print('Scan completed.')
                     if mainwin.statusbar.isVisible() == True:
                         mainwin.statusbar.showMessage('Feed scan completed.')
