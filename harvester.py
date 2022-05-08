@@ -570,13 +570,14 @@ class ReaderUI(QMainWindow):
                 self.output(err)
             posthtml = self.generate_posts_page(results)
             self.ui.webEngine.setHtml(posthtml)
-            # mark as read - change font, remove icon and unread conunt, and update DB
+            # mark as read - change font, remove icon and unread count, and update DB
             if '(' in node_title:
                 node_title = node_title.rpartition('(')[0].strip()
                 self.ui.treeMain.currentItem().setText(0, node_title)
                 self.ui.treeMain.currentItem().setFont(0, QFont('Segoe UI', 10))
                 self.ui.treeMain.currentItem().setIcon(0, QIcon())
                 #QQQQ - should ideally add to a thread manager
+                # only update last_read if new posts exist to save DB writes
                 try:
                     sqlitelib.mark_feed_read(node_id, self.db_curs, self.db_conn)
                 except Exception as err:

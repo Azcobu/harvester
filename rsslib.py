@@ -337,13 +337,14 @@ def validate_feed(feed_url):
     return results
 
 def main():
+    pass
     db_file = 'd:\\tmp\\posts.db'
     #curs, conn = sqlitelib.connect_DB_file(db_file)
     #https://apod.nasa.gov/apod.rss
     #print(validate_feed('https://apod.nasa.gov/apod.rss'))
     #invfull = 'http://bhagpuss.blogspot.com/feeds/posts/default'
     #futclo = 'http://feeds.feedburner.com/FutilityCloset'
-    #post = retrieve_feed(futclo)
+    #post = check_feed(futclo)
     #feedlist = parse_opml('d:\\tmp\\aus-feeds.opml')
     #print(f'{len(feedlist)} feeds imported.')
     #retrieve_feeds(feedlist)

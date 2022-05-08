@@ -212,15 +212,22 @@ def vacuum(conn):
     print('DB maintenance complete.')
 
 def mark_old_as_read(numdays, curs=None, conn=None):
-    query = f'UPDATE `posts` SET `flags` = 1 WHERE `date` < date("now", "-{numdays} day")'
-    #query = "SELECT * FROM `posts` WHERE `date` < date('now', '-365 day');"
+    timeoffset = (datetime.now() - timedelta(days=numdays)).isoformat()
+    query = f'UPDATE `posts` SET `flags` = 1 WHERE `date` < "{timeoffset}";'
+    # query = "SELECT * FROM `posts` WHERE `date` < date('now', '-3 day');"
     curs.execute(query)
+    query2 = (f'UPDATE `feeds` SET `last_read` = "{timeoffset}" '
+              f'WHERE `last_read` < "{timeoffset}"')
+    curs.execute(query2)
     conn.commit()
-    print(f'{curs.rowcount} posts marked as read.')
+    #print(f'{curs.rowcount} posts marked as read.')
 
 def mark_feed_read(feed_id, curs, conn):
-    query = f'UPDATE `posts` SET `flags` = 1 WHERE `feed_id` = "{feed_id}" '
-    curs.execute(query)
+    query = f'UPDATE `posts` SET `flags` = 1 WHERE `feed_id` = ?;'
+    curs.execute(query, (feed_id,))
+    timestamp = datetime.now().isoformat()
+    query = f'UPDATE `feeds` SET `last_read` = ? WHERE `id` = ?;'
+    curs.execute(query, (timestamp, feed_id,))
     conn.commit()
     print(f'Feed {feed_id} marked as read.')
 
@@ -365,7 +372,7 @@ def update_feed_folder(feed_id, new_folder, curs, conn):
 def main():
     pass
     #dbfile = 'd:\\tmp\\posts.db'
-    #dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
+    dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
     #curs, conn = connect_DB_file(dbfile)
     #get_data(curs, conn)
     #newpost = Post(2, 'The Hypogeum', 'Father Inire', '2021-06-08', 'Certainly it is desirable to maintain in being a movement that has proved so useful in the past, and as long as the mirrors of the caller Hethor remain unbroken, she provides it with a plausible commander.')
