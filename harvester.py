@@ -442,8 +442,15 @@ class ReaderUI(QMainWindow):
             treenode.setText(1, feed_id)
             fontweight = QFont.Bold if unread_count_str else False
             treenode.setFont(0, QFont('Segoe UI', 10, fontweight))
-            if unread_count_str:
+
+            if self.feeds[feed_id].favicon:
+                pmap = QPixmap()
+                pmap.loadFromData(self.feeds[feed_id].favicon)
+                treenode.setIcon(0, QIcon(pmap))
+            else:
                 treenode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
+            #if unread_count_str:
+            #    treenode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
         except RuntimeError as err: # caused by QT hiding or deleting a node
             pass
 
@@ -563,17 +570,25 @@ class ReaderUI(QMainWindow):
             posthtml = self.generate_posts_page(results)
             self.ui.webEngine.setHtml(posthtml)
             # mark as read - change font, remove icon and unread count, and update DB
+            self.feeds[node_id].last_read = datetime.now().isoformat()
+            self.feeds[node_id].unread = 0
+            try:
+                sqlitelib.mark_feed_read(node_id, self.db_curs, self.db_conn)
+            except Exception as err:
+                self.output(f'Error - failed to update read status of {node_title}: {err}')
+            #set last read time to now
+            self.format_feed_tree_node(self.ui.treeMain.currentItem(), node_id)
+
+            '''
             if self.feeds[node_id].unread:
                 node_title = self.feeds[node_id].title
                 self.ui.treeMain.currentItem().setText(0, node_title)
                 self.ui.treeMain.currentItem().setFont(0, QFont('Segoe UI', 10))
                 self.ui.treeMain.currentItem().setIcon(0, QIcon())
+            '''
                 #QQQQ - should ideally add to a thread manager
                 # only update last_read if new posts exist to save DB writes
-                try:
-                    sqlitelib.mark_feed_read(node_id, self.db_curs, self.db_conn)
-                except Exception as err:
-                    self.output(f'Error - failed to update read status of {node_title}: {err}')
+
 
     def collapse_other_folders(self, curr_node):
         root = self.ui.treeMain.invisibleRootItem()

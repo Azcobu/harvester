@@ -6,6 +6,7 @@
 
 import sqlite3
 import rsslib
+import icons
 from datetime import datetime, timezone, date, timedelta
 from os import path
 
@@ -384,6 +385,18 @@ def update_feed_folder(feed_id, new_folder, curs, conn):
             return True
     return False
 
+def update_favicon(feed_id, icon, curs, conn):
+    query = '''
+    UPDATE `feeds`
+    SET favicon = ?
+    WHERE `id` = ?
+    '''
+    try:
+        curs.execute(query, (icon, feed_id))
+        conn.commit()
+    except Exception as err:
+        print(f'Error changing icon for {feed_id} - {err}')
+
 def main():
     pass
     dbfile = 'd:\\tmp\\posts.db'
@@ -411,6 +424,7 @@ def main():
     #print(text_search('symbol', curs, conn, None, 'month'))  # kryl
     #print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
+    print(list_feeds_over_post_count(0, curs, conn))
 
 if __name__ == '__main__':
     main()
