@@ -437,12 +437,15 @@ class ReaderUI(QMainWindow):
         else:
             unread_count_str = ''
 
-        treenode.setText(0, f'{self.feeds[feed_id].title}{unread_count_str}')
-        treenode.setText(1, feed_id)
-        fontweight = QFont.Bold if unread_count_str else False
-        treenode.setFont(0, QFont('Segoe UI', 10, fontweight))
-        if unread_count_str:
-            treenode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
+        try:
+            treenode.setText(0, f'{self.feeds[feed_id].title}{unread_count_str}')
+            treenode.setText(1, feed_id)
+            fontweight = QFont.Bold if unread_count_str else False
+            treenode.setFont(0, QFont('Segoe UI', 10, fontweight))
+            if unread_count_str:
+                treenode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
+        except RuntimeError as err: # caused by QT hiding or deleting a node
+            pass
 
     def setup_tree(self):
         # Need to evaluate unread count - worth doing every time?
@@ -475,22 +478,14 @@ class ReaderUI(QMainWindow):
 
     def generate_filtered_tree(self, srchtext):
         self.output(f'Searching for feeds with {srchtext} in name...')
-        unread_count_dict = sqlitelib.count_filtered_unread(srchtext, self.db_curs,
-                                                            self.db_conn)
         self.ui.treeMain.clear()
         srchtext = srchtext.lower()
 
         for feed in self.feeds.values():
             if srchtext in feed.title.lower():
-                if feed.id in unread_count_dict:
-                    unread_count_str = f'({unread_count_dict[feed.id]})'
-                else:
-                    unread_count_str = ''
-                newnode = QTreeWidgetItem(self.ui.treeMain,
-                          [f'{feed.title} {unread_count_str}', feed.id])
-                fontweight = QFont.Bold if unread_count_str else False
-                newnode.setFont(0, QFont('Segoe UI', 10, fontweight))
+                newnode = QTreeWidgetItem(self.ui.treeMain)
                 self.ui.treeMain.addTopLevelItem(newnode)
+                self.format_feed_tree_node(newnode, feed.id)
 
         # add redd folder
         if self.redd_dir:
