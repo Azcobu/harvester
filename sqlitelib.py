@@ -37,7 +37,7 @@ def create_DB(filename):
             rss_url   text,
             html_url  text,
             tags      text,
-            last_read text,
+            last_read text DEFAULT "1970-01-01T00:00:00+00:00",
             favicon   blob
             )
         ''')
@@ -139,13 +139,13 @@ def write_feed(feed, curs=None, conn=None):
     if not curs:
         curs, conn = connect_DB(filename)
 
-    infeed = feed.feed_id, feed.title, feed.folder, feed.f_type, feed.rss_url,\
+    infeed = feed.id, feed.title, feed.folder, feed.f_type, feed.rss_url,\
                  feed.html_url, str(feed.tags), feed.last_read #, feed.favicon
 
     curs.execute("INSERT OR IGNORE INTO feeds "\
                  "('id', 'title', 'folder','type', 'rss_url', 'html_url', 'tags', 'last_read') "
                  "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ",\
-                 (feed.feed_id, feed.title, feed.folder, feed.f_type, feed.rss_url,\
+                 (feed.id, feed.title, feed.folder, feed.f_type, feed.rss_url,\
                  feed.html_url, str(feed.tags), feed.last_read))
     conn.commit()
 
@@ -154,7 +154,7 @@ def write_feed_list(feedlist, curs=None, conn=None):
 
     for feed in feedlist:
         print(f'{feed}')
-        infeed = feed.feed_id, feed.title, feed.folder, feed.f_type, feed.rss_url,\
+        infeed = feed.id, feed.title, feed.folder, feed.f_type, feed.rss_url,\
                  feed.html_url, str(feed.tags), feed.last_read #, feed.favicon
         feedsql.append(infeed)
 
@@ -177,7 +177,14 @@ def get_feed_posts(feed_id, curs=None, conn=None):
 
 def count_all_unread(curs=None, conn=None):
     try:
-        query = ("SELECT p.feed_id, COUNT(*) FROM `posts` p WHERE p.flags = 'None' GROUP BY p.feed_id;")
+        #query = ("SELECT p.feed_id, COUNT(*) FROM `posts` p WHERE p.flags = 'None' GROUP BY p.feed_id;")
+        query = '''
+        SELECT p.feed_id, COUNT(*)
+        FROM `posts` p
+        JOIN `feeds` f ON f.id = p.feed_id
+        WHERE p.date > f.last_read
+        GROUP BY p.feed_id
+        '''
         curs.execute(query)
         k =  {x[0]:x[1] for x in curs.fetchall()}
         return k
@@ -241,9 +248,17 @@ def find_date_last_read(feed_id, curs, conn):
         return lastdate[0]
     return None
 
+'''
 def find_date_all_feeds_last_read(curs, conn):
     #generate a dict of last read post for all feeds
     query = f'SELECT feed_id, MAX(`date`) FROM `posts` WHERE `flags` = 1 GROUP BY `feed_id`;'
+    curs.execute(query)
+    results = {x[0]:x[1] for x in curs.fetchall()}
+    return results
+'''
+def find_date_all_feeds_last_read(curs, conn):
+    #generate a dict of last read post for all feeds
+    query = f'SELECT id, last_read FROM `feeds`;'
     curs.execute(query)
     results = {x[0]:x[1] for x in curs.fetchall()}
     return results
@@ -276,9 +291,9 @@ def delete_feed(feed, curs=None, conn=None):
         curs, conn = connect_DB(filename)
 
     try:
-        delquery = f'DELETE FROM `posts` WHERE `feed_id` = "{feed.feed_id}";'
+        delquery = f'DELETE FROM `posts` WHERE `feed_id` = "{feed.id}";'
         curs.execute(delquery)
-        delquery = f'DELETE FROM `feeds` WHERE `id` = "{feed.feed_id}";'
+        delquery = f'DELETE FROM `feeds` WHERE `id` = "{feed.id}";'
         curs.execute(delquery)
         conn.commit()
     except Exception as err:
@@ -371,9 +386,9 @@ def update_feed_folder(feed_id, new_folder, curs, conn):
 
 def main():
     pass
-    #dbfile = 'd:\\tmp\\posts.db'
-    dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
-    #curs, conn = connect_DB_file(dbfile)
+    dbfile = 'd:\\tmp\\posts.db'
+    #dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
+    curs, conn = connect_DB_file(dbfile)
     #get_data(curs, conn)
     #newpost = Post(2, 'The Hypogeum', 'Father Inire', '2021-06-08', 'Certainly it is desirable to maintain in being a movement that has proved so useful in the past, and as long as the mirrors of the caller Hethor remain unbroken, she provides it with a plausible commander.')
     #write_post(dbfile, 'vfdvdf', curs, conn)

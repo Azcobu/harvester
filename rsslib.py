@@ -17,9 +17,9 @@ from urllib.parse import urljoin
 errorlog = []
 
 class Feed:
-    def __init__(self, feed_id, title, folder, f_type, rss_url, html_url, tags=None,\
+    def __init__(self, id, title, folder, f_type, rss_url, html_url, tags=None,\
                  last_read=0, favicon=None):
-        self.feed_id = feed_id
+        self.id = id
         self.title = title
         self.folder = folder
         self.f_type = f_type
@@ -30,7 +30,9 @@ class Feed:
             self.tags = []
         self.tags = tags
         self.last_read = last_read
+        self.unread = 0
         self.favicon = favicon
+        self.treenode = None
 
     def __repr__(self):
         return f'Feed: {self.title} ({self.html_url})'
@@ -44,7 +46,7 @@ class Feed:
             return instr
 
     def sanitize(self):
-        return Feed(self.feed_id, self.san(self.title), self.folder, self.f_type,
+        return Feed(self.id, self.san(self.title), self.folder, self.f_type,
                     self.san(self.rss_url), self.san(self.html_url), self.san(self.tags),
                     self.last_read, self.favicon)
 
@@ -161,7 +163,7 @@ def parse_post(feed, postdata):
             else:
                 content = 'No content found.'
 
-        return Post(p_id, feed.feed_id, title, author, url, date, content, 'None')
+        return Post(p_id, feed.id, title, author, url, date, content, 'None')
 
     except Exception as err:
         print(f'Post parsing failed for feed {feed} - {err}.')
@@ -198,14 +200,15 @@ def save_error_log(errlog):
     with open('d:\\tmp\\rss-errors.txt', 'w') as outfile:
         outfile.write(errlog)
 
-def import_opml_to_db(opmlfile, curr_feeds, db_curs, db_conn):
+def import_opml_to_db(opmlfile, feeds_dict, db_curs, db_conn):
     trimfeeds = []
+    curr_feeds = feeds_dict.values()
     dupes = 0
-    already_subbed = set([x.feed_id for x in curr_feeds])
+    already_subbed = set([x.id for x in curr_feeds])
     feeds = parse_opml(opmlfile)
     if feeds:
         for x in feeds:
-            if x.feed_id in already_subbed:
+            if x.id in already_subbed:
                 print(f'Already subscribed to feed {x}, skipping import.')
                 dupes += 1
             else:
@@ -309,7 +312,7 @@ def DB_writer(DB_queue, numworkers, db_filename, mainwin):
 
 def check_feed(feed_url):
     # returns either a Feed object or False
-    # feed_id, title=title, folder=None, f_type, rss_url, html_url=link, tags, favicon
+    # id, title=title, folder=None, f_type, rss_url, html_url=link, tags, favicon
     try:
         parsedfeed = feedparser.parse(feed_url)
         title = parsedfeed.feed.title

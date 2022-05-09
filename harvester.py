@@ -51,6 +51,7 @@ class ReaderUI(QMainWindow):
     version_str = 'Harvester 0.1'
     console_output = True
     db_filename = None
+    feeds = {}
     node_name, node_id = '', ''
     web_zoom = 1.25
     pagenav_icon_size = 20
@@ -249,7 +250,7 @@ class ReaderUI(QMainWindow):
             self.unsubAction.setStatusTip("Unsubscribe from the current feed.")
             menu.addAction(self.feedProperties)
 
-            curr_node = [x for x in self.feedlist if x.feed_id == self.node_id][0]
+            curr_feed = self.feeds[self.node_id]
 
             #menu.addAction("Choice 2")
             #menu.addAction("Choice 3")
@@ -260,19 +261,19 @@ class ReaderUI(QMainWindow):
 
             folder_options = self.folderlist
             for f in folder_options:
-                if f != curr_node.folder:
+                if f != curr_feed.folder:
                     tmp_action = move_folder.addAction(f)
-                    tmp_action.triggered.connect(partial(self.move_to_folder, curr_node, f))
-            if curr_node.folder != None and curr_node.folder != '':
+                    tmp_action.triggered.connect(partial(self.move_to_folder, curr_feed, f))
+            if curr_feed.folder != None and curr_feed.folder != '':
                 sep = move_folder.addSeparator()
                 no_folder = move_folder.addAction('None (remove from current folder)')
-                no_folder.triggered.connect(partial(self.move_to_folder, curr_node, None))
+                no_folder.triggered.connect(partial(self.move_to_folder, curr_feed, None))
 
         menu.exec_(self.ui.treeMain.mapToGlobal(position))
 
     def move_to_folder(self, feed, folder_name):
-        self.output(f'Moving feed {feed.feed_id} to {folder_name} folder.')
-        moved = sqlitelib.update_feed_folder(feed.feed_id, str(folder_name),
+        self.output(f'Moving feed {feed.id} to {folder_name} folder.')
+        moved = sqlitelib.update_feed_folder(feed.id, str(folder_name),
                                              self.db_curs, self.db_conn)
         if moved:
             feed.folder = folder_name
@@ -415,49 +416,52 @@ class ReaderUI(QMainWindow):
         self.close()
 
     def load_feed_data(self):
-        self.feedlist = rsslib.import_feeds_from_db(self.db_curs, self.db_conn)
+        feeds = rsslib.import_feeds_from_db(self.db_curs, self.db_conn)
+        for f in feeds:
+            self.feeds[f.id] = f
+
         # find all folders
-        self.folderlist = set([x.folder for x in self.feedlist if x.folder not in [None, '']])
+        self.folderlist = set([x.folder for x in feeds if x.folder not in [None, '', 'None']])
         self.folderlist = sorted(self.folderlist)
+
+        self.update_feeds_unread_counts()
+
+    def update_feeds_unread_counts(self):
+        unreads = sqlitelib.count_all_unread(self.db_curs, self.db_conn)
+        for k, v in unreads.items():
+            self.feeds[k].unread = v
+
+    def format_feed_tree_node(self, treenode, feed_id):
+        if self.feeds[feed_id].unread:
+            unread_count_str = f' ({self.feeds[feed_id].unread})'
+        else:
+            unread_count_str = ''
+
+        treenode.setText(0, f'{self.feeds[feed_id].title}{unread_count_str}')
+        treenode.setText(1, feed_id)
+        fontweight = QFont.Bold if unread_count_str else False
+        treenode.setFont(0, QFont('Segoe UI', 10, fontweight))
+        if unread_count_str:
+            treenode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
 
     def setup_tree(self):
         # Need to evaluate unread count - worth doing every time?
-        unread_count = sqlitelib.count_all_unread(self.db_curs, self.db_conn)
-
-        # QQQQ find the date/time of the newest post that has been read, for each feed
-        # this is so worker threads can update tree with unread numbers
-        self.collate_feeds_last_read()
-
         self.ui.treeMain.clear()
 
         for f in self.folderlist:
             foldernode = QTreeWidgetItem(self.ui.treeMain, [f, 'folder'])
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
-            for feed in [x for x in self.feedlist if x.folder == f]:
-                if feed.feed_id in unread_count:
-                    unread_count_str = f' ({unread_count[feed.feed_id]})'
-                else:
-                    unread_count_str = ''
-                newnode = QTreeWidgetItem(foldernode, [f'{feed.title}{unread_count_str}',
-                                          feed.feed_id])
-                fontweight = QFont.Bold if unread_count_str else False
-                newnode.setFont(0, QFont('Segoe UI', 10, fontweight))
-                if unread_count_str:
-                    newnode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
+            for feed in [v for v in self.feeds.values() if v.folder == f]:
+                newnode = QTreeWidgetItem(foldernode)
+                self.feeds[feed.id].treenode = newnode
+                self.format_feed_tree_node(newnode, feed.id)
 
-        # add folderless feeds?
-        for feed in [x for x in self.feedlist if x.folder in [None, '']]:
-            if feed.feed_id in unread_count:
-                unread_count_str = f' ({unread_count[feed.feed_id]})'
-            else:
-                unread_count_str = ''
-            newnode = QTreeWidgetItem(self.ui.treeMain, [f'{feed.title}{unread_count_str}',
-                      feed.feed_id])
-            fontweight = QFont.Bold if unread_count_str else False
-            newnode.setFont(0, QFont("Segoe UI", 10, fontweight))
-            if unread_count_str: # doesn't work due to style sheet
-                    newnode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
+        # add folderless feeds
+        for feed in [v for v in self.feeds.values() if v.folder in [None, '', 'None']]:
+            newnode = QTreeWidgetItem(self.ui.treeMain)
+            self.feeds[feed.id].treenode = newnode
+            self.format_feed_tree_node(newnode, feed.id)
 
         # add redd folder
         if self.redd_dir:
@@ -476,14 +480,14 @@ class ReaderUI(QMainWindow):
         self.ui.treeMain.clear()
         srchtext = srchtext.lower()
 
-        for feed in self.feedlist:
+        for feed in self.feeds.values():
             if srchtext in feed.title.lower():
-                if feed.feed_id in unread_count_dict:
-                    unread_count_str = f'({unread_count_dict[feed.feed_id]})'
+                if feed.id in unread_count_dict:
+                    unread_count_str = f'({unread_count_dict[feed.id]})'
                 else:
                     unread_count_str = ''
                 newnode = QTreeWidgetItem(self.ui.treeMain,
-                          [f'{feed.title} {unread_count_str}', feed.feed_id])
+                          [f'{feed.title} {unread_count_str}', feed.id])
                 fontweight = QFont.Bold if unread_count_str else False
                 newnode.setFont(0, QFont('Segoe UI', 10, fontweight))
                 self.ui.treeMain.addTopLevelItem(newnode)
@@ -495,13 +499,6 @@ class ReaderUI(QMainWindow):
                 if srchtext in rf:
                     newnode = QTreeWidgetItem(self.ui.treeMain, [f'{rf}', 'reddfile'])
                     newnode.setFont(0, QFont('Segoe UI', 10))
-
-    def collate_feeds_last_read(self):
-        # QQQQ for each feed, gets the date of the last read post
-        last_read = sqlitelib.find_date_all_feeds_last_read(self.db_curs, self.db_conn)
-        for f in self.feedlist:
-            if f.feed_id in last_read:
-                f.last_read = last_read[f.feed_id]
 
     def exit_app(self):
         self.output('Exiting app...')
@@ -571,8 +568,8 @@ class ReaderUI(QMainWindow):
             posthtml = self.generate_posts_page(results)
             self.ui.webEngine.setHtml(posthtml)
             # mark as read - change font, remove icon and unread count, and update DB
-            if '(' in node_title:
-                node_title = node_title.rpartition('(')[0].strip()
+            if self.feeds[node_id].unread:
+                node_title = self.feeds[node_id].title
                 self.ui.treeMain.currentItem().setText(0, node_title)
                 self.ui.treeMain.currentItem().setFont(0, QFont('Segoe UI', 10))
                 self.ui.treeMain.currentItem().setIcon(0, QIcon())
@@ -609,6 +606,7 @@ class ReaderUI(QMainWindow):
 
     def mark_older(self):
         sqlitelib.mark_old_as_read(3, self.db_curs, self.db_conn)
+        self.update_feeds_unread_counts()
         self.setup_tree()
 
     def find_in_page(self, srchtext=None):
@@ -620,29 +618,29 @@ class ReaderUI(QMainWindow):
         #self.ui.webEngine.findText("new", flags)
         self.ui.search_toolbar.show()
 
-    def update_tree_node_background(self, feed_title, mode):
-        flags = Qt.MatchContains | Qt.MatchRecursive
-        try:
-            # QQQQ this should eventually be replaced by the new feeddict to directly
-            # specify the node
-            node = self.ui.treeMain.findItems(feed_title, flags, 0)[0]
-            if node:
+    def update_tree_node_background(self, feed_id, mode):
+        node = self.feeds[feed_id].treenode
+        if node:
+            try:
                 if mode == 'downloading':
                     node.setBackground(0, QtGui.QColor(16, 16, 128, 255))
                     #node.setBackground(0, QtGui.QColor(61, 174, 233, 255))
                 elif mode == 'finished':
                     node.setData(0, Qt.BackgroundRole, None)
-        except Exception as err:
-            pass
+            except Exception as err:
+                pass
 
     def node_started_downloading_update_ui(self, data):
-        msg, feed_title = data[0], data[1]
+        msg, feed_id = data[0], data[1]
         self.ui.statusbar.showMessage(msg)
-        self.update_tree_node_background(feed_title, 'downloading')
+        self.update_tree_node_background(feed_id, 'downloading')
 
     def node_finished_downloading_update_ui(self, indata):
-        num_new, feed_title = indata[0], indata[1]
-        self.update_tree_node_background(feed_title, 'finished')
+        num_new, feed_id = indata[0], indata[1]
+        # QQQQ note not += because new_num counts all posts since last_unread every time
+        self.feeds[feed_id].unread = num_new
+        self.format_feed_tree_node(self.feeds[feed_id].treenode, feed_id)
+        self.update_tree_node_background(feed_id, 'finished')
 
     def update_all_feeds(self):
         mainwin = self.ui
@@ -654,20 +652,20 @@ class ReaderUI(QMainWindow):
         q = Queue()
         DB_queue = Queue()
         #numworkers = 10
-        listsize = len(self.feedlist)
+        listsize = len(self.feeds)
         #self.ui.progressBar.setMinimum(0)
         #self.ui.progressBar.setMaximum(listsize)
 
         # generate queue in tree display order rather than alphabetically
-        view_sort = sorted([x for x in self.feedlist if x.folder],
+        view_sort = sorted([x for x in self.feeds.values() if x.folder],
                     key = lambda x: (x.folder, x.title.lower()))
-        view_sort += sorted([x for x in self.feedlist if not x.folder],
+        view_sort += sorted([x for x in self.feeds.values() if not x.folder],
                     key = lambda x: x.title.lower())
         for feed in view_sort:
             q.put(feed)
 
         for x in range(self.threadpool.maxThreadCount()):
-            worker = downloader.Worker(listsize, x, q, DB_queue)
+            worker = downloader.Worker(listsize, x, q, DB_queue, self.feeds)
             worker.signals.started.connect(self.node_started_downloading_update_ui)
             worker.signals.finished.connect(self.node_finished_downloading_update_ui)
             self.threadpool.start(worker)
@@ -697,7 +695,7 @@ class ReaderUI(QMainWindow):
         dlg = QFileDialog.getOpenFileName(self, "Open OPML File", "", \
             "OPML Files (*.opml);;All files (*.*)")
         if dlg[0] != '':
-            new, dupes = rsslib.import_opml_to_db(dlg[0], self.feedlist, self.db_curs,
+            new, dupes = rsslib.import_opml_to_db(dlg[0], self.feeds, self.db_curs,
                                                   self.db_conn)
             if new:
                 self.load_feed_data()
@@ -725,7 +723,7 @@ class ReaderUI(QMainWindow):
                     f'<dateModified>{timestr}</dateModified>\n\t</head>\n\t<body>\n')
         for folder in self.folderlist:
             opml.append(f'\t\t<outline text="{folder}">\n')
-            for feed in [x for x in self.feedlist if x.folder == folder]:
+            for feed in [v for v in self.feeds.values() if v.folder == folder]:
                 feed = feed.sanitize()
                 opml.append(f'\t\t\t<outline text="{feed.title}" title="{feed.title}" '
                             f'type="{feed.f_type}" xmlUrl="{feed.rss_url}" '
@@ -733,7 +731,7 @@ class ReaderUI(QMainWindow):
             opml.append('\t\t</outline>\n')
 
         # folderless feeds
-        for feed in [x for x in self.feedlist if x.folder in [None, '']]:
+        for feed in [v for v in self.feeds.values() if v.folder in [None, '', 'None']]:
             feed = feed.sanitize()
             opml.append(f'\t\t<outline text="{feed.title}" title="{feed.title}" '
                         f'type="{feed.f_type}" xmlUrl="{feed.rss_url}" '
@@ -750,11 +748,11 @@ class ReaderUI(QMainWindow):
     def update_feed(self, feed=None):
         if not feed:
             node_id = self.ui.treeMain.currentItem().text(1)
-            feed = [x for x in self.feedlist if x.feed_id == node_id][0]
+            feed = [v for v in self.feeds.values() if v.id == node_id][0]
         self.output(f'Updating {feed.title}')
         self.ui.statusbar.showMessage(f'Updating {feed.title}')
         rsslib.retrieve_feed(feed, self.db_curs, self.db_conn)
-        sqlitelib.get_feed_posts(feed.feed_id, self.db_curs, self.db_conn)
+        sqlitelib.get_feed_posts(feed.id, self.db_curs, self.db_conn)
 
     def search_feeds(self):
         srchdialog = SrchDialog(self)
@@ -802,12 +800,12 @@ class ReaderUI(QMainWindow):
                      "This will unsubscribe you from the feed and delete all saved posts. "
                      "Are you sure?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if confirm == QMessageBox.Yes:
-                delfeed = [x for x in self.feedlist if x.feed_id == self.node_id][0]
-                self.feedlist.remove(delfeed)
+                delfeed = [v for v in self.feeds.values() if v.id == self.node_id][0]
+                del self.feeds[delfeed]
                 res = sqlitelib.delete_feed(delfeed, self.db_curs, self.db_conn)
                 if res:
-                    self.output(f'Unsubscribed from {delfeed.feed_id}.')
-                    self.ui.statusbar.showMessage(f'Unsubscribed from {delfeed.feed_id}.')
+                    self.output(f'Unsubscribed from {delfeed.id}.')
+                    self.ui.statusbar.showMessage(f'Unsubscribed from {delfeed.id}.')
                     self.load_feed_data()
                     self.setup_tree()
 
@@ -940,8 +938,8 @@ class ReaderUI(QMainWindow):
         db_size = path.getsize(self.db_filename)
 
         page.append(f'<b>Total database size:</b> {self.format_filesize_str(db_size)}.<p>')
-        page.append(f'<b>Total feeds:</b> {len(self.feedlist)}.<p>')
-        mean_str = self.format_filesize_str(db_size / len(self.feedlist))
+        page.append(f'<b>Total feeds:</b> {len(self.feeds)}.<p>')
+        mean_str = self.format_filesize_str(db_size / len(self.feeds))
         page.append(f'<b>Mean feed size:</b> {mean_str}.<p><hr>')
 
         page.append('</head><body><h3>Feed Size Report</h3>'

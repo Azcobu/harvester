@@ -18,7 +18,7 @@ def db():
     test_db = DB_Data(*sqlitelib.create_DB(":memory:"))
     newfeed = rsslib.Feed("http://new-sun.gov", "New Sun", "Main Folder",
                           "rss", "http://new-sun.gov/rss", "http://new-sun.gov",
-                          None, 0, None)
+                          None, "1970-01-01T00:00:00+00:00", None)
     sqlitelib.write_feed(newfeed, test_db.curs, test_db.conn)
     postdate = f"{date.today().year}-01-01"
     newpost = rsslib.Post(1, "http://new-sun.gov", "Chapter 1 - Resurrection and Death",
@@ -76,7 +76,8 @@ def test_find_date_last_read(db):
     assert sqlitelib.find_date_last_read("http://new-sun.gov", db.curs, db.conn) == None
 
 def test_find_date_all_feeds_last_read(db):
-    assert sqlitelib.find_date_all_feeds_last_read(db.curs, db.conn) == {}
+    assert sqlitelib.find_date_all_feeds_last_read(db.curs, db.conn) == \
+        {'http://new-sun.gov': "1970-01-01T00:00:00+00:00"}
 
 def test_count_unread_posts(db):
     assert sqlitelib.count_filtered_unread("New", db.curs, db.conn) == \

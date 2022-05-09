@@ -57,7 +57,7 @@ def feeds():
     return feedlist
 
 def test_feed_class_basics(good_feed):
-    assert good_feed.feed_id == 'GoodFeed01'
+    assert good_feed.id == 'GoodFeed01'
     assert good_feed.title == 'Good Feed'
     assert good_feed.tags == ['alpha', 'beta']
     assert str(good_feed) == 'Feed: Good Feed (http://goodfeed.com)'
