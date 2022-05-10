@@ -1,0 +1,78 @@
+import logging
+from dataclasses import dataclass
+from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QObject, QRunnable)
+import sqlitelib
+
+@dataclass
+class DBJob:
+    name: str
+    params: list
+
+class DBSignals(QObject):
+    started = pyqtSignal(tuple)
+    finished = pyqtSignal(tuple)
+    error = pyqtSignal(tuple)
+    result = pyqtSignal(tuple)
+    feedposts = pyqtSignal(list)
+
+class DBHandler(QObject):
+    def __init__(self, db_q, numworkers, db_filename):
+        super(DBHandler, self).__init__()
+        self.db_q = db_q
+        self.numworkers = numworkers
+        self.db_filename = db_filename
+        self.signals = DBSignals()
+
+    def run(self):
+        stopsfound = 0
+        postlist = []
+
+        #identify task, run it, and return data if needed
+        db_curs, db_conn = sqlitelib.connect_DB_file(self.db_filename)
+        db_conn.execute('PRAGMA journal_mode = WAL')
+
+        while True:
+            op = self.db_q.get()
+            if op.name == 'write_post_list':
+                postlist = op.params
+                logging.info(f'Writing {len(postlist)} post(s) to DB.')
+                sqlitelib.write_post_list(postlist, db_curs, db_conn)
+            elif op.name == 'mark_feed_read':
+                sqlitelib.mark_feed_read(op.params[0], db_curs, db_conn)
+                logging.debug(f'DB handler marked feed {op.params[0]} as read.')
+            elif op.name == 'get_feed_posts':
+                feed_id = op.params[0]
+                results = sqlitelib.get_feed_posts(feed_id, db_curs, db_conn)
+                self.signals.feedposts.emit(results) # Done
+        logging.debug('DB handler thread halting.')
+
+        '''
+        while stopsfound < numworkers:
+            while not self.q.empty():
+                currpost = DB_queue.get()
+                if currpost == "stopsignal":
+                    stopsfound += 1
+                    logging.debug(f'Stop signal {stopsfound} found.')
+                    if stopsfound == numworkers:
+                        logging.debug('Scan completed.')
+                        if mainwin.statusbar.isVisible() == True:
+                            mainwin.statusbar.showMessage('Feed scan completed.')
+                else:
+                    postlist.append(currpost)
+
+            if postlist:
+                logging.debug(f'Writing batch of {len(postlist)} posts to DB.')
+                try:
+                    sqlitelib.write_post_list(postlist, db_curs, db_conn)
+                except Exception as err:
+                    logging.error(f"DB write error - {err}")
+                postlist = []
+                time.sleep(1)
+    DB_queue.task_done()
+        '''
+
+def main():
+    pass
+
+if __name__ == '__main__':
+    main()

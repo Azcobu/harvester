@@ -281,7 +281,7 @@ def worker(listsize, workernum, q, DB_queue, mainwin=None, flags=None, upicon=No
         q.task_done()
     DB_queue.put('stopsignal')
 '''
-
+'''
 def DB_writer(DB_queue, numworkers, db_filename, mainwin):
     stopsfound = 0
     postlist = []
@@ -310,7 +310,7 @@ def DB_writer(DB_queue, numworkers, db_filename, mainwin):
             postlist = []
             time.sleep(1)
     DB_queue.task_done()
-
+'''
 def check_feed(feed_url):
     # returns either a Feed object or False
     # id, title=title, folder=None, f_type, rss_url, html_url=link, tags, favicon

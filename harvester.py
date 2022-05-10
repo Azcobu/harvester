@@ -24,7 +24,7 @@ from dateutil.parser import *
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
-                          pyqtSlot, QThreadPool)
+                          pyqtSlot, QThread, QThreadPool)
 from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap
 from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
     QTreeWidgetItem, QMenu, QAction, QDialog, QLineEdit, QLabel, QMessageBox,
@@ -38,6 +38,7 @@ import sqlitelib
 import resources.breeze_resources
 from newsub import NewSubDialog
 import downloader
+import dbhandler
 
 class CustomWebEnginePage(QWebEnginePage):
     # Custom WebEnginePage to customize how we handle link navigation
@@ -65,6 +66,7 @@ class ReaderUI(QMainWindow):
     last_read = {}
     redd_dir = ''
     first_run_mode = True
+    db_q = Queue()
 
     def __init__(self):
         super(ReaderUI, self).__init__()
@@ -99,6 +101,7 @@ class ReaderUI(QMainWindow):
         self.initializeUI()
         self.load_previous_state()
         self.init_data()
+        self.init_threads()
         self.show()
 
     def initializeUI(self):
@@ -108,10 +111,8 @@ class ReaderUI(QMainWindow):
         self.ui.treeMain.itemExpanded.connect(lambda node: self.collapse_other_folders(node))
         self.ui.treeMain.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.treeMain.customContextMenuRequested.connect(self.tree_context_menu)
-        self.threadpool = QThreadPool()
-        self.threadpool.setMaxThreadCount(10)
-        self.threadpool.setExpiryTimeout(10000)
-        logging.basicConfig(level=logging.DEBUG)
+
+        logging.basicConfig(level=logging.INFO)
 
         #self.ui.progressBar = QProgressBar()
         #self.ui.statusbar.addPermanentWidget(self.ui.progressBar)
@@ -196,6 +197,23 @@ class ReaderUI(QMainWindow):
         self.setup_tree()
         self.view_most_recent()
         #self.update_all_feeds()
+
+    def init_threads(self):
+        # reuseable thread pool for downloaders
+        self.threadpool = QThreadPool()
+        self.threadpool.setMaxThreadCount(10)
+        self.threadpool.setExpiryTimeout(10000)
+
+        # single long-term thread for DB handler
+        self.db_thread = QThread()
+        self.db_handler = dbhandler.DBHandler(self.db_q, 10, self.db_filename)
+        self.db_handler.moveToThread(self.db_thread)
+        self.db_thread.started.connect(self.db_handler.run)
+        self.db_thread.start()
+        self.db_handler.signals.feedposts.connect(self.display_post_data)
+
+    def db_job(self, cmd, *params):
+        self.db_q.put(dbhandler.DBJob(cmd, params))
 
     def link_hover(self, url):
         if 'data:text/html;' in url:
@@ -561,36 +579,20 @@ class ReaderUI(QMainWindow):
             curr_state = curr_node.isExpanded()
             curr_node.setExpanded(not curr_state)
         else:
-            #print(f'Tree clicked - {node_title} selected with ID {node_id}.')
+            #logging.debug(f'Tree clicked - {node_title} selected with ID {node_id}.')
             self.anchor_id = 0
             self.setWindowTitle(f'{self.version_str} - {node_title}')
-            try:
-                results = sqlitelib.get_feed_posts(node_id, self.db_curs, self.db_conn)
-                self.results = results
-            except Exception as err:
-                logging.error(err)
-            posthtml = self.generate_posts_page(results)
-            self.ui.webEngine.setHtml(posthtml)
+            self.db_job('get_feed_posts', node_id)
             # mark as read - change font, remove icon and unread count, and update DB
             self.feeds[node_id].last_read = datetime.now().isoformat()
             self.feeds[node_id].unread = 0
-            try:
-                sqlitelib.mark_feed_read(node_id, self.db_curs, self.db_conn)
-            except Exception as err:
-                logging.error(f'Error - failed to update read status of {node_title}: {err}')
-            #set last read time to now
+            self.db_job('mark_feed_read', node_id)
             self.format_feed_tree_node(self.ui.treeMain.currentItem(), node_id)
 
-            '''
-            if self.feeds[node_id].unread:
-                node_title = self.feeds[node_id].title
-                self.ui.treeMain.currentItem().setText(0, node_title)
-                self.ui.treeMain.currentItem().setFont(0, QFont('Segoe UI', 10))
-                self.ui.treeMain.currentItem().setIcon(0, QIcon())
-            '''
-                #QQQQ - should ideally add to a thread manager
-                # only update last_read if new posts exist to save DB writes
-
+    def display_post_data(self, results):
+        self.results = results
+        posthtml = self.generate_posts_page(results)
+        self.ui.webEngine.setHtml(posthtml)
 
     def collapse_other_folders(self, curr_node):
         root = self.ui.treeMain.invisibleRootItem()
@@ -662,7 +664,6 @@ class ReaderUI(QMainWindow):
             return
 
         q = Queue()
-        DB_queue = Queue()
         #numworkers = 10
         listsize = len(self.feeds)
         #self.ui.progressBar.setMinimum(0)
@@ -677,15 +678,17 @@ class ReaderUI(QMainWindow):
             q.put(feed)
 
         for x in range(self.threadpool.maxThreadCount()):
-            worker = downloader.Worker(listsize, x, q, DB_queue, self.feeds)
+            worker = downloader.Worker(listsize, x, q, self.db_q, self.feeds)
             worker.signals.started.connect(self.node_started_downloading_update_ui)
             worker.signals.finished.connect(self.node_finished_downloading_update_ui)
             self.threadpool.start(worker)
 
-        DB_thread = threading.Thread(target=rsslib.DB_writer, args=[DB_queue,
+        '''
+        DB_thread = threading.Thread(target=rsslib.DB_writer, args=[self.db_q,
                                      self.threadpool.maxThreadCount(),
                                      self.db_filename, mainwin])
         DB_thread.start()
+        '''
 
     def new_sub(self):
         # QQQQ should probably use threading for instances where other DB activity is happening
@@ -699,7 +702,6 @@ class ReaderUI(QMainWindow):
             self.load_feed_data()
             # QQQQ also need to spin off a thread here to get the feed's icon
             self.setup_tree()
-            #QQQQ need to add to tree, refresh
 
     def mark_read(self):
         logging.debug(f'Mark feed {self.node_name} - {self.node_id} read.')
@@ -761,7 +763,7 @@ class ReaderUI(QMainWindow):
     def update_feed(self, feed=None):
         if not feed:
             node_id = self.ui.treeMain.currentItem().text(1)
-            feed = [v for v in self.feeds.values() if v.id == node_id][0]
+            feed = self.feeds[node_id]
         logging.debug(f'Updating {feed.title}')
         self.ui.statusbar.showMessage(f'Updating {feed.title}')
         rsslib.retrieve_feed(feed, self.db_curs, self.db_conn)

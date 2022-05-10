@@ -2,6 +2,7 @@ import feedparser
 import logging
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QObject, QRunnable)
 import rsslib
+import dbhandler
 
 class WorkerSignals(QObject):
     started = pyqtSignal(tuple)
@@ -22,6 +23,7 @@ class Worker(QRunnable):
     @pyqtSlot()
     def run(self):
         while not self.url_queue.empty():
+            postlist = []
             newpost_count = 0
             currfeed = self.url_queue.get()
             feednum = self.listsize - self.url_queue.qsize()
@@ -41,12 +43,14 @@ class Worker(QRunnable):
                             if newpost.date > self.feeds[currfeed.id].last_read:
                                 newpost_count += 1
                                 newpost.strip_image_tags()
-                                self.db_queue.put(newpost)
+                                postlist.append(newpost)
+                if postlist:
+                    self.db_queue.put(dbhandler.DBJob('write_post_list', postlist))
                 self.url_queue.task_done()
             #self.signals.result.emit(result) # Return the result of the process
             finally:
                 self.signals.finished.emit((newpost_count, currfeed.id)) # Done
-        self.db_queue.put('stopsignal')
+        #self.db_queue.put('stopsignal')
 
 if __name__ == '__main__':
     main()
