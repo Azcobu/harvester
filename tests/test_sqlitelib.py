@@ -125,7 +125,7 @@ def test_delete_feed(db):
     delfeed = rsslib.Feed("http://new-sun.gov", "New Sun", "Main Folder",
                           "rss", "http://new-sun.gov/rss", "http://new-sun.gov",
                           None, 0, None)
-    sqlitelib.delete_feed(delfeed, db.curs, db.conn)
+    sqlitelib.delete_feed(delfeed.id, db.curs, db.conn)
     assert len(sqlitelib.retrieve_feedlist(db.curs, db.conn)) == 0
     assert sqlitelib.count_all_unread(db.curs, db.conn) == {}
 

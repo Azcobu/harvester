@@ -6,19 +6,20 @@
 
 import sqlite3
 import rsslib
-import icons
+import logging
 from datetime import datetime, timezone, date, timedelta
 from os import path
 
 def connect_DB_file(db_file):
     if not db_file or not path.exists(db_file):
-        print(f'DB file {db_file} could not be found.')
+        logging.error(f'DB file {db_file} could not be found.')
         return None
 
     try:
         conn = sqlite3.connect(db_file)
+        conn.execute('PRAGMA journal_mode = WAL')
     except Exception as err:
-        print(f'Error connecting to DB file {db_file}: {err}')
+        logging.error(f'Error connecting to DB file {db_file}: {err}')
         return None
     curs = conn.cursor()
     return curs, conn
@@ -61,7 +62,7 @@ def create_DB(filename):
         conn.commit()
         return curs, conn
     except Exception as err:
-        print(f'Error creating DB {filename} - {err}')
+        logging.error(f'Error creating DB {filename} - {err}')
         return False
 
 def calc_limit_date(instr):
@@ -91,7 +92,7 @@ def text_search(srchtext, curs, conn, limit=None, datelimit=None, feed_id=None):
     try:
         curs.execute(query, (srchtext,))
     except Exception as err:
-        print(f'Error: {err}. Full query was {query}')
+        logging.error(f'Error: {err}. Full query was {query}')
         return None
     else:
         results = curs.fetchall()
@@ -174,7 +175,7 @@ def get_feed_posts(feed_id, curs=None, conn=None):
         results = curs.fetchall()
         return convert_results_to_postlist(results)
     except Exception as err:
-        print(f'Error retrieving posts for {feed_id} - {err}')
+        logging.error(f'Error retrieving posts for {feed_id} - {err}')
 
 def count_all_unread(curs=None, conn=None):
     try:
@@ -190,7 +191,7 @@ def count_all_unread(curs=None, conn=None):
         k =  {x[0]:x[1] for x in curs.fetchall()}
         return k
     except Exception as err:
-        print(f'Error counting unread posts for feeds - {err}')
+        logging.error(f'Error counting unread posts for feeds - {err}')
 
 def count_filtered_unread(feed_str, curs=None, conn=None):
     # returns unread count for feeds with title matching search string
@@ -213,7 +214,7 @@ def get_most_recent(numposts, curs=None, conn=None):
         results = curs.fetchall()
         return convert_results_to_postlist(results)
     except Exception as err:
-        print(f'Error getting most recent posts - {err}')
+        logging.error(f'Error getting most recent posts - {err}')
 
 def vacuum(conn):
     conn.execute('VACUUM')
@@ -237,7 +238,7 @@ def mark_feed_read(feed_id, curs, conn):
     query = f'UPDATE `feeds` SET `last_read` = ? WHERE `id` = ?;'
     curs.execute(query, (timestamp, feed_id,))
     conn.commit()
-    print(f'Feed {feed_id} marked as read.')
+    logging.info(f'Feed {feed_id} marked as read.')
 
 def find_date_last_read(feed_id, curs, conn):
     query = f'SELECT `date` FROM `posts` WHERE `feed_id` = "{feed_id}" AND `flags` = 1 '\
@@ -245,7 +246,7 @@ def find_date_last_read(feed_id, curs, conn):
     curs.execute(query)
     lastdate = curs.fetchone()
     if lastdate:
-        print(f'Date for last read post for {feed_id} is {lastdate[0]}.')
+        logging.info(f'Date for last read post for {feed_id} is {lastdate[0]}.')
         return lastdate[0]
     return None
 
@@ -271,7 +272,7 @@ def convert_results_to_postlist(results):
         try:
             newpost = rsslib.Post(*p)
         except Exception as err:
-            print(f'Error converting DB result to post object - {err}')
+            logging.error(f'Error converting DB result to post object - {err}')
         postlist.append(newpost)
     return postlist
 
@@ -283,25 +284,25 @@ def retrieve_feedlist(curs=None, conn=None):
         try:
             newfeed = rsslib.Feed(*f)
         except Exception as err:
-            print('Error loading feeds from DB - {err}')
+            logging.error('Error loading feeds from DB - {err}')
         feedlist.append(newfeed)
     return feedlist
 
-def delete_feed(feed, curs=None, conn=None):
+def delete_feed(feed_id, curs=None, conn=None):
     if not curs:
         curs, conn = connect_DB(filename)
 
     try:
-        delquery = f'DELETE FROM `posts` WHERE `feed_id` = "{feed.id}";'
-        curs.execute(delquery)
-        delquery = f'DELETE FROM `feeds` WHERE `id` = "{feed.id}";'
-        curs.execute(delquery)
+        delquery = f'DELETE FROM `posts` WHERE `feed_id` = ?'
+        curs.execute(delquery, (feed_id,))
+        delquery = f'DELETE FROM `feeds` WHERE `id` = ?'
+        curs.execute(delquery, (feed_id,))
         conn.commit()
     except Exception as err:
-        print(f'Error deleting feed {feed} - {err}')
+        logging.error(f'Error deleting feed {feed_id} - {err}')
         return False
     else:
-        print(f'Deleted feed {feed}.')
+        logging.error(f'Deleted feed {feed_id}.')
         return True
 
 def delete_all_but_last_n(feed_id, keepnum, curs, conn, verbose=True):
@@ -311,10 +312,10 @@ def delete_all_but_last_n(feed_id, keepnum, curs, conn, verbose=True):
         curs.execute(query, (feed_id, feed_id, keepnum))
         conn.commit()
     except Exception as err:
-        print(f'Error deleting past {keepnum} posts from {feed_id} - {err}')
+        logging.error(f'Error deleting past {keepnum} posts from {feed_id} - {err}')
     else:
         if verbose:
-            print(f'Deleted all but last {keepnum} posts from {feed_id}.')
+            logging.info(f'Deleted all but last {keepnum} posts from {feed_id}.')
 
 def mass_delete_all_but_last_n(keepnum, curs, conn):
     feedlist = list_feeds_over_post_count(keepnum, curs, conn)
@@ -378,10 +379,10 @@ def update_feed_folder(feed_id, new_folder, curs, conn):
             curs.execute(q, (new_folder, feed_id))
             conn.commit()
         except Exception as err:
-            print(f'Error changing folder for {feed_id} - {err}')
+            logging.error(f'Error changing folder for {feed_id} - {err}')
             return False
         else:
-            print(f'Changed folder for {feed_id} to {new_folder}.')
+            logging.info(f'Changed folder for {feed_id} to {new_folder}.')
             return True
     return False
 
@@ -395,7 +396,7 @@ def update_favicon(feed_id, icon, curs, conn):
         curs.execute(query, (icon, feed_id))
         conn.commit()
     except Exception as err:
-        print(f'Error changing icon for {feed_id} - {err}')
+        logging.error(f'Error changing icon for {feed_id} - {err}')
 
 def main():
     pass

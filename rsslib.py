@@ -2,6 +2,7 @@
 #handles backend RSS stuff like retrieving and parsing feeds and posts
 
 import threading
+import logging
 from queue import Queue
 import feedparser
 from dateutil.parser import *
@@ -73,7 +74,7 @@ def open_opml_file(infile):
         with open(infile, 'r') as inf:
             outdata = inf.read()
     except Exception as err:
-        print(err)
+        logging.error(err)
     return outdata
 
 def parse_opml(infile):
@@ -85,7 +86,7 @@ def parse_opml(infile):
     try:
         feedlist = opml.parse(infile)
     except Exception as err:
-        print(f'Parsing of {infile} failed - {err}')
+        logging.error(f'Parsing of {infile} failed - {err}')
     else:
         folder_feeds, folderless_feeds = [], []
 
@@ -102,7 +103,7 @@ def parse_opml(infile):
                             newfeed = Feed(data.xmlUrl, data.title, currfolder, data.type,
                                            data.xmlUrl, data.xmlUrl)
                     except Exception as err:
-                        print(f'Error parsing {data} - {err}')
+                        logging.error(f'Error parsing {data} - {err}')
                     else:
                         folder_feeds.append(newfeed)
             else: #folderless feed
@@ -111,7 +112,7 @@ def parse_opml(infile):
                     newfeed = Feed(data.htmlUrl, data.title, None, data.type,
                                    data.xmlUrl, data.htmlUrl)
                 except Exception as err:
-                    print(f'Error parsing {data} - {err}')
+                    logging.error(f'Error parsing {data} - {err}')
                 else:
                     folderless_feeds.append(newfeed)
 
@@ -123,7 +124,7 @@ def parse_date(indate):
     try:
         outdate = parse(indate).isoformat()
     except Exception as err:
-        print(f'Error parsing date {indate} - {err}')
+        logging.error(f'Error parsing date {indate} - {err}')
         return indate
     return outdate
 
@@ -166,7 +167,7 @@ def parse_post(feed, postdata):
         return Post(p_id, feed.id, title, author, url, date, content, 'None')
 
     except Exception as err:
-        print(f'Post parsing failed for feed {feed} - {err}.')
+        logging.error(f'Post parsing failed for feed {feed} - {err}.')
         errorlog.append(f'{err} - ' + str(postdata) + '\n\n')
 
 def retrieve_feed(feed, db_curs, db_conn):
@@ -179,7 +180,7 @@ def retrieve_feed(feed, db_curs, db_conn):
             try:
                 newpost = parse_post(feed, p)
             except Exception as err:
-                print(f'Parsing of post {p} failed - {err}.')
+                logging.error(f'Parsing of post {p} failed - {err}.')
             else:
                 if newpost:
                     newpost.strip_image_tags()
@@ -187,7 +188,7 @@ def retrieve_feed(feed, db_curs, db_conn):
                     postlist.append(newpost)
         sqlitelib.write_post_list(postlist, db_curs, db_conn)
     else:
-        print(f'No posts found for {feed.title}')
+        logging.warning(f'No posts found for {feed.title}')
 
 '''
 def retrieve_all_feeds(feedlist):
@@ -209,7 +210,7 @@ def import_opml_to_db(opmlfile, feeds_dict, db_curs, db_conn):
     if feeds:
         for x in feeds:
             if x.id in already_subbed:
-                print(f'Already subscribed to feed {x}, skipping import.')
+                logging.warning(f'Already subscribed to feed {x}, skipping import.')
                 dupes += 1
             else:
                 trimfeeds.append(x)
@@ -292,20 +293,20 @@ def DB_writer(DB_queue, numworkers, db_filename, mainwin):
             currpost = DB_queue.get()
             if currpost == "stopsignal":
                 stopsfound += 1
-                print(f'Stop signal {stopsfound} found.')
+                logging.debug(f'Stop signal {stopsfound} found.')
                 if stopsfound == numworkers:
-                    print('Scan completed.')
+                    logging.debug('Scan completed.')
                     if mainwin.statusbar.isVisible() == True:
                         mainwin.statusbar.showMessage('Feed scan completed.')
             else:
                 postlist.append(currpost)
 
         if postlist:
-            print(f'Writing batch of {len(postlist)} posts to DB.')
+            logging.debug(f'Writing batch of {len(postlist)} posts to DB.')
             try:
                 sqlitelib.write_post_list(postlist, db_curs, db_conn)
             except Exception as err:
-                print(f"DB write error - {err}")
+                logging.error(f"DB write error - {err}")
             postlist = []
             time.sleep(1)
     DB_queue.task_done()
@@ -320,7 +321,7 @@ def check_feed(feed_url):
                        parsedfeed.feed.link, '[]', None)
         return newfeed
     except Exception as err:
-        print(f'Failed to parse feed at {feed_url} - {err}')
+        logging.error(f'Failed to parse feed at {feed_url} - {err}')
         return False
 
 def royalroad_rss(inurl):

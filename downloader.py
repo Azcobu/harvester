@@ -1,4 +1,5 @@
 import feedparser
+import logging
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, QObject, QRunnable)
 import rsslib
 
@@ -26,12 +27,12 @@ class Worker(QRunnable):
             feednum = self.listsize - self.url_queue.qsize()
             msg = (f'{feednum}/{self.listsize}: Worker {self.workernum+1} '
                    f'retrieving {currfeed.title}')
-            print(msg)
+            logging.info(msg)
             self.signals.started.emit((msg, currfeed.id))
             try:
                 parsedfeed = feedparser.parse(currfeed.rss_url)
             except Exception as err:
-                print(f'Failed to read feed {currfeed.title} - {err}')
+                logging.error(f'Failed to read feed {currfeed.title} - {err}')
             else:
                 if parsedfeed.entries:
                     for p in parsedfeed.entries:

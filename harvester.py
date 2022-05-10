@@ -12,6 +12,7 @@
 
 import sys
 import threading
+import logging
 import urllib.request
 from functools import partial
 from os import listdir, path, getcwd
@@ -110,6 +111,7 @@ class ReaderUI(QMainWindow):
         self.threadpool = QThreadPool()
         self.threadpool.setMaxThreadCount(10)
         self.threadpool.setExpiryTimeout(10000)
+        logging.basicConfig(level=logging.DEBUG)
 
         #self.ui.progressBar = QProgressBar()
         #self.ui.statusbar.addPermanentWidget(self.ui.progressBar)
@@ -230,7 +232,7 @@ class ReaderUI(QMainWindow):
         item = self.ui.treeMain.itemAt(position)
         self.node_name = item.text(0)  # The text of the node.
         self.node_id = item.text(1)
-        self.output(f'Clicked on {self.node_name}')
+        logging.debug(f'Clicked on {self.node_name}')
 
         menu = QMenu()
         menu.addAction(self.newSubAction)
@@ -272,7 +274,7 @@ class ReaderUI(QMainWindow):
         menu.exec_(self.ui.treeMain.mapToGlobal(position))
 
     def move_to_folder(self, feed, folder_name):
-        self.output(f'Moving feed {feed.id} to {folder_name} folder.')
+        logging.debug(f'Moving feed {feed.id} to {folder_name} folder.')
         moved = sqlitelib.update_feed_folder(feed.id, str(folder_name),
                                              self.db_curs, self.db_conn)
         if moved:
@@ -290,13 +292,13 @@ class ReaderUI(QMainWindow):
             try:
                 self.generate_filtered_tree(srchtext)
             except Exception as err:
-                self.output(f'{err}')
+                logging.error(f'{err}')
 
     def finalize_page(self, anchor_jump_id=None):
         """Performs final text resize and internal page navigation once the page is loaded."""
         if not (isinstance(self.web_zoom, float) or isinstance(self.web_zoom, int)):
-            self.output('Error retrieving previous zoom level - value was ' +
-                       f'{self.web_zoom}. Setting to default of 125%.')
+            logging.error('Error retrieving previous zoom level - value was ' +
+                          f'{self.web_zoom}. Setting to default of 125%.')
             self.web_zoom = 1.25
         self.ui.webEngine.setZoomFactor(self.web_zoom)
 
@@ -370,10 +372,10 @@ class ReaderUI(QMainWindow):
     def load_db_file(self, db_filename):
         if not db_filename:
             db_filename = self.locate_db()
-        self.output(f'Loading DB file {db_filename}')
+        logging.info(f'Loading DB file {db_filename}')
         db = sqlitelib.connect_DB_file(db_filename)
         while not db:
-            self.output(f'Attempt to load DB file {db_filename} failed.')
+            logging.error(f'Attempt to load DB file {db_filename} failed.')
             self.db_filename = None
             db_filename = self.locate_db()
             db = sqlitelib.connect_DB_file(db_filename)
@@ -392,7 +394,7 @@ class ReaderUI(QMainWindow):
                 self.output('Setting DB file to {dlg[0]}.')
             '''
         else: #cancelled dialog
-            self.output('Loading file cancelled.')
+            logging.info('Loading file cancelled.')
             return None
 
     def menu_load_db(self):
@@ -405,7 +407,7 @@ class ReaderUI(QMainWindow):
 
     def locate_reddit_dir(self, skip_query=True):
         if not self.redd_dir:
-            self.output('Locating Reddit directory.')
+            logging.debug('Locating Reddit directory.')
             rd = str(QFileDialog.getExistingDirectory(self, "Select Reddit Directory"))
             if rd:
                 self.redd_dir = rd
@@ -484,7 +486,7 @@ class ReaderUI(QMainWindow):
                 newnode.setFont(0, QFont("Segoe UI", 10))
 
     def generate_filtered_tree(self, srchtext):
-        self.output(f'Searching for feeds with {srchtext} in name...')
+        logging.debug(f'Searching for feeds with {srchtext} in name...')
         self.ui.treeMain.clear()
         srchtext = srchtext.lower()
 
@@ -503,7 +505,7 @@ class ReaderUI(QMainWindow):
                     newnode.setFont(0, QFont('Segoe UI', 10))
 
     def exit_app(self):
-        self.output('Exiting app...')
+        logging.info('Exiting app...')
         self.close()
 
     def create_db(self):
@@ -513,10 +515,10 @@ class ReaderUI(QMainWindow):
             if dlg:
                 new_db = dlg[0]
         except Exception as err:
-            self.output(f'{err}')
+            logging.error(f'{err}')
         if new_db:
             if sqlitelib.create_DB(new_db):
-                self.output(f'New database {new_db} created.')
+                logging.info(f'New database {new_db} created.')
                 loadnew = QMessageBox.question(self, "Load new DB?",
                           "Would you like to load the new database?",
                           QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
@@ -566,7 +568,7 @@ class ReaderUI(QMainWindow):
                 results = sqlitelib.get_feed_posts(node_id, self.db_curs, self.db_conn)
                 self.results = results
             except Exception as err:
-                self.output(err)
+                logging.error(err)
             posthtml = self.generate_posts_page(results)
             self.ui.webEngine.setHtml(posthtml)
             # mark as read - change font, remove icon and unread count, and update DB
@@ -575,7 +577,7 @@ class ReaderUI(QMainWindow):
             try:
                 sqlitelib.mark_feed_read(node_id, self.db_curs, self.db_conn)
             except Exception as err:
-                self.output(f'Error - failed to update read status of {node_title}: {err}')
+                logging.error(f'Error - failed to update read status of {node_title}: {err}')
             #set last read time to now
             self.format_feed_tree_node(self.ui.treeMain.currentItem(), node_id)
 
@@ -603,7 +605,7 @@ class ReaderUI(QMainWindow):
             self.ui.statusbar.showMessage(f'{item.text(0)} - {item.text(1)}')
 
     def view_most_recent(self, num=100):
-        self.output(f'Showing {num} most recent posts.')
+        logging.debug(f'Showing {num} most recent posts.')
         startposts = sqlitelib.get_most_recent(num, self.db_curs, self.db_conn)
         if not startposts:
             self.results = []
@@ -695,11 +697,12 @@ class ReaderUI(QMainWindow):
             sqlitelib.write_feed(newsub, self.db_curs, self.db_conn)
             self.update_feed(newsub)
             self.load_feed_data()
+            # QQQQ also need to spin off a thread here to get the feed's icon
             self.setup_tree()
             #QQQQ need to add to tree, refresh
 
     def mark_read(self):
-        self.output(f'Mark feed {self.node_name} - {self.node_id} read.')
+        logging.debug(f'Mark feed {self.node_name} - {self.node_id} read.')
 
     def import_feeds_from_opml(self):
         dlg = QFileDialog.getOpenFileName(self, "Open OPML File", "", \
@@ -759,7 +762,7 @@ class ReaderUI(QMainWindow):
         if not feed:
             node_id = self.ui.treeMain.currentItem().text(1)
             feed = [v for v in self.feeds.values() if v.id == node_id][0]
-        self.output(f'Updating {feed.title}')
+        logging.debug(f'Updating {feed.title}')
         self.ui.statusbar.showMessage(f'Updating {feed.title}')
         rsslib.retrieve_feed(feed, self.db_curs, self.db_conn)
         sqlitelib.get_feed_posts(feed.id, self.db_curs, self.db_conn)
@@ -768,7 +771,7 @@ class ReaderUI(QMainWindow):
         srchdialog = SrchDialog(self)
         srchdialog.exec()
         if self.srchtext:
-            self.output(f'Searching feeds DB for "{self.srchtext}" in {self.srchtime.lower()}.')
+            logging.debug(f'Searching feeds DB for "{self.srchtext}" in {self.srchtime.lower()}.')
             results = sqlitelib.text_search(self.srchtext, self.db_curs, self.db_conn,
                                             100, self.srchtime)
             if results:
@@ -786,7 +789,7 @@ class ReaderUI(QMainWindow):
             srchdialog = SrchDialog(self)
             srchdialog.exec()
             if self.srchtext:
-                self.output(f'Searching {node_title} for "{self.srchtext}" in '
+                logging.debug(f'Searching {node_title} for "{self.srchtext}" in '
                             f'{self.srchtime.lower()}.')
                 results = sqlitelib.text_search(self.srchtext, self.db_curs,
                                                 self.db_conn, 100, self.srchtime, node_id)
@@ -810,12 +813,11 @@ class ReaderUI(QMainWindow):
                      "This will unsubscribe you from the feed and delete all saved posts. "
                      "Are you sure?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
             if confirm == QMessageBox.Yes:
-                delfeed = [v for v in self.feeds.values() if v.id == self.node_id][0]
-                del self.feeds[delfeed]
-                res = sqlitelib.delete_feed(delfeed, self.db_curs, self.db_conn)
+                res = sqlitelib.delete_feed(self.node_id, self.db_curs, self.db_conn)
                 if res:
-                    self.output(f'Unsubscribed from {delfeed.id}.')
-                    self.ui.statusbar.showMessage(f'Unsubscribed from {delfeed.id}.')
+                    logging.info(f'Unsubscribed from {self.feeds[self.node_id].title}.')
+                    self.ui.statusbar.showMessage(f'Unsubscribed from {self.feeds[self.node_id].title}.')
+                    del self.feeds[self.node_id]
                     self.load_feed_data()
                     self.setup_tree()
 
@@ -1113,7 +1115,7 @@ def convert_isodate_to_fulldate(isodate):
         localtime = utctime.astimezone(localtz)
         return localtime.strftime(formatstr)
     except Exception as err:
-        print(f'Timezone conversion error - {err}')
+        logging.error(f'Timezone conversion error - {err}')
         return isodate
 
 def load_css_file():
@@ -1125,9 +1127,9 @@ def load_css_file():
                 with open(cssfilename, 'r') as cssfile:
                     return cssfile.read()
             except Exception as err:
-                print(f'Loading CSS file failed - {err}')
+                logging.error(f'Loading CSS file failed - {err}')
     else:
-        print('Unable to locate pagestyle.css.')
+        logging.error('Unable to locate pagestyle.css.')
 
 def exception_hook(exctype, value, traceback):
     print(exctype, value, traceback)
