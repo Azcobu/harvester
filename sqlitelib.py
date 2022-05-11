@@ -32,15 +32,17 @@ def create_DB(filename):
         # Create table
         curs.execute(
         '''CREATE TABLE feeds (
-            id        text primary key,
-            title     text,
-            folder    text,
-            type      text,
-            rss_url   text,
-            html_url  text,
-            tags      text,
-            last_read text DEFAULT "1970-01-01T00:00:00+00:00",
-            favicon   blob
+            id              text primary key,
+            title           text,
+            folder          text,
+            type            text,
+            rss_url         text,
+            html_url        text,
+            tags            text,
+            last_read       text DEFAULT "1970-01-01T00:00:00+00:00",
+            etag            text DEFAULT "0",
+            last_modified   text DEFAULT "Thu, 1 Jan 1970 00:00:00 GMT",
+            favicon         blob
             )
         ''')
         # most fields are self explanatory, but flags = None/0 for unread posts, and 1 for read
@@ -142,13 +144,16 @@ def write_feed(feed, curs=None, conn=None):
         curs, conn = connect_DB(filename)
 
     infeed = feed.id, feed.title, feed.folder, feed.f_type, feed.rss_url,\
-                 feed.html_url, str(feed.tags), feed.last_read #, feed.favicon
+             feed.html_url, str(feed.tags), feed.last_read, feed.etag,\
+             feed.last_modified   #, feed.favicon
 
     curs.execute("INSERT OR IGNORE INTO feeds "\
-                 "('id', 'title', 'folder','type', 'rss_url', 'html_url', 'tags', 'last_read') "
-                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ",\
-                 (feed.id, feed.title, feed.folder, feed.f_type, feed.rss_url,\
-                 feed.html_url, str(feed.tags), feed.last_read))
+                 "('id', 'title', 'folder','type', 'rss_url', 'html_url', 'tags',\
+                   'last_read', 'etag', 'last_modified') "
+                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ",\
+                 (feed.id, feed.title, feed.folder, feed.f_type, feed.rss_url,
+                  feed.html_url, str(feed.tags), feed.last_read, feed.etag,
+                  feed.last_modified))
     conn.commit()
 
 def write_feed_list(feedlist, curs=None, conn=None):
@@ -157,15 +162,17 @@ def write_feed_list(feedlist, curs=None, conn=None):
     for feed in feedlist:
         print(f'{feed}')
         infeed = feed.id, feed.title, feed.folder, feed.f_type, feed.rss_url,\
-                 feed.html_url, str(feed.tags), feed.last_read #, feed.favicon
+                 feed.html_url, str(feed.tags), feed.last_read, feed.etag,\
+                 feed.last_modified #, feed.favicon
         feedsql.append(infeed)
 
     print([x for x in feedsql if 'Register' in x[1]])
 
     curs.executemany("INSERT OR IGNORE INTO feeds ('id', 'title', 'folder',\
-                     'type', 'rss_url', 'html_url', 'tags', 'last_read') "
+                     'type', 'rss_url', 'html_url', 'tags', 'last_read',\
+                     'etag', 'last_modified') "
                      #, 'favicon') "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", feedsql)
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feedsql)
     conn.commit()
 
 def get_feed_posts(feed_id, curs=None, conn=None):
@@ -179,7 +186,6 @@ def get_feed_posts(feed_id, curs=None, conn=None):
 
 def count_all_unread(curs=None, conn=None):
     try:
-        #query = ("SELECT p.feed_id, COUNT(*) FROM `posts` p WHERE p.flags = 'None' GROUP BY p.feed_id;")
         query = '''
         SELECT p.feed_id, COUNT(*)
         FROM `posts` p
@@ -387,16 +393,20 @@ def update_feed_folder(feed_id, new_folder, curs, conn):
     return False
 
 def update_favicon(feed_id, icon, curs, conn):
-    query = '''
-    UPDATE `feeds`
-    SET favicon = ?
-    WHERE `id` = ?
-    '''
+    query = 'UPDATE `feeds` SET `favicon` = ? WHERE `id` = ?'
     try:
         curs.execute(query, (icon, feed_id))
         conn.commit()
     except Exception as err:
         logging.error(f'Error changing icon for {feed_id} - {err}')
+
+def update_lastmod_etag(feed_id, last_mod, etag, curs, conn):
+    query = 'UPDATE `feeds` SET `last_modified` = ?, `etag` = ? WHERE `id` = ?'
+    try:
+        curs.execute(query, (last_mod, etag, feed_id))
+        conn.commit()
+    except Exception as err:
+        logging.error(f'Error setting lastmod or etag for {feed_id} - {err}')
 
 def main():
     pass

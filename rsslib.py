@@ -19,7 +19,8 @@ errorlog = []
 
 class Feed:
     def __init__(self, id, title, folder, f_type, rss_url, html_url, tags=None,\
-                 last_read=0, favicon=None):
+                 last_read=0, favicon=None, etag='0',
+                 last_modified="Thu, 1 Jan 1970 00:00:00 GMT"):
         self.id = id
         self.title = title
         self.folder = folder
@@ -33,6 +34,8 @@ class Feed:
         self.last_read = last_read
         self.unread = 0
         self.favicon = favicon
+        self.etag = etag
+        self.last_modified = last_modified
         self.treenode = None
 
     def __repr__(self):
@@ -49,7 +52,7 @@ class Feed:
     def sanitize(self):
         return Feed(self.id, self.san(self.title), self.folder, self.f_type,
                     self.san(self.rss_url), self.san(self.html_url), self.san(self.tags),
-                    self.last_read, self.favicon)
+                    self.last_read, self.etag, self.last_modified, self.favicon)
 
 class Post:
     def __init__(self, p_id, feed_id, title, author, url, date, content, flags):
@@ -78,7 +81,8 @@ def open_opml_file(infile):
     return outdata
 
 def parse_opml(infile):
-    #p_id, feed_id, title, folder, f_type, rss_url, html_url, tags=[], last_read, favicon)
+    # p_id, feed_id, title, folder, f_type, rss_url, html_url, tags=[], last_read,
+    # etag, last_modified, favicon)
     # needs to distinguish between folders and top-level folderless feeds
 
     currfolder = ''
@@ -313,12 +317,13 @@ def DB_writer(DB_queue, numworkers, db_filename, mainwin):
 '''
 def check_feed(feed_url):
     # returns either a Feed object or False
-    # id, title=title, folder=None, f_type, rss_url, html_url=link, tags, favicon
+    # id, title=title, folder=None, f_type, rss_url, html_url=link, tags,
+    # last_read, etag, last_modified, favicon
     try:
         parsedfeed = feedparser.parse(feed_url)
         title = parsedfeed.feed.title
         newfeed = Feed(feed_url, parsedfeed.feed.title, None, 'rss', feed_url,
-                       parsedfeed.feed.link, '[]', None)
+                       parsedfeed.feed.link, '[]', 0, None, 0, None)
         return newfeed
     except Exception as err:
         logging.error(f'Failed to parse feed at {feed_url} - {err}')

@@ -24,6 +24,9 @@ class DBHandler(QObject):
         self.signals = DBSignals()
 
     def run(self):
+        self.exec()
+
+    def exec(self):
         stopsfound = 0
         postlist = []
 
@@ -35,7 +38,7 @@ class DBHandler(QObject):
             op = self.db_q.get()
             if op.name == 'write_post_list':
                 postlist = op.params
-                logging.info(f'Writing {len(postlist)} post(s) to DB.')
+                logging.info(f'Writing {len(postlist)} post(s) to DB - queue is {self.db_q.qsize()}')
                 sqlitelib.write_post_list(postlist, db_curs, db_conn)
             elif op.name == 'mark_feed_read':
                 sqlitelib.mark_feed_read(op.params[0], db_curs, db_conn)
@@ -43,7 +46,11 @@ class DBHandler(QObject):
             elif op.name == 'get_feed_posts':
                 feed_id = op.params[0]
                 results = sqlitelib.get_feed_posts(feed_id, db_curs, db_conn)
-                self.signals.feedposts.emit(results) # Done
+                self.signals.feedposts.emit(results)
+            elif op.name == 'update_lastmod_etag':
+                feed_id, last_mod, etag = op.params
+                sqlitelib.update_lastmod_etag(feed_id, last_mod, etag, db_curs, db_conn)
+                logging.debug(f'DB handler updated etag/lastmod for feed {feed_id}')
         logging.debug('DB handler thread halting.')
 
         '''

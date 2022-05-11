@@ -39,6 +39,7 @@ import resources.breeze_resources
 from newsub import NewSubDialog
 import downloader
 import dbhandler
+import icons
 
 class CustomWebEnginePage(QWebEnginePage):
     # Custom WebEnginePage to customize how we handle link navigation
@@ -112,7 +113,7 @@ class ReaderUI(QMainWindow):
         self.ui.treeMain.setContextMenuPolicy(Qt.CustomContextMenu)
         self.ui.treeMain.customContextMenuRequested.connect(self.tree_context_menu)
 
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.DEBUG)
 
         #self.ui.progressBar = QProgressBar()
         #self.ui.statusbar.addPermanentWidget(self.ui.progressBar)
@@ -547,7 +548,7 @@ class ReaderUI(QMainWindow):
                                   "new database? If not, the new database will be empty.",
                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
                     if load_sample == QMessageBox.Yes:
-                        #new, dupes = rsslib.import_opml_to_db(dlg[0], self.feedlist,
+                        #new, dupes = rsslib.import_opml_to_db(dlg[0], self.feeds,
                                       self.db_curs, self.db_conn)
                         pass
                     '''
@@ -698,9 +699,10 @@ class ReaderUI(QMainWindow):
             self.ui.statusbar.showMessage(f'Adding new subscription: {newsub.title} - '
                                           f'{newsub.rss_url} to folder {newsub.folder}')
             sqlitelib.write_feed(newsub, self.db_curs, self.db_conn)
+            # should spin this off into its own thread too
+            icons.save_icon(newsub.id, newsub.html_url, self.db_curs, self.db_conn)
             self.update_feed(newsub)
             self.load_feed_data()
-            # QQQQ also need to spin off a thread here to get the feed's icon
             self.setup_tree()
 
     def mark_read(self):
@@ -761,6 +763,7 @@ class ReaderUI(QMainWindow):
         self.ui.statusbar.showMessage(f'Feeds exported to file {fname}.')
 
     def update_feed(self, feed=None):
+        #QQQQ convert to using downloader thread
         if not feed:
             node_id = self.ui.treeMain.currentItem().text(1)
             feed = self.feeds[node_id]

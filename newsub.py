@@ -31,12 +31,11 @@ class NewSubDialog(QDialog):
     def check_button(self):
         feed_url = self.ui.lineNewSubFeedUrl.text()
         if feed_url:
-            if feed_url not in [x.rss_url for x in self.parent.feedlist]:
+            if feed_url not in [x.rss_url for x in self.parent.feeds.values()]:
                 self.ui.lblFeedValid.setText('Checking feed...')
                 self.ui.lblFeedValid.repaint()
                 results = rsslib.validate_feed(feed_url)
                 if type(results) == rsslib.Feed:
-                    #if results.title not in [x.title for x in self.parent.feedlist]:
                     self.feed = results
                     self.ui.lineNewSubFeedUrl.setText(results.rss_url)
                     self.ui.lblFeedValid.setText('Feed is valid.')
