@@ -24,7 +24,6 @@ class Worker(QRunnable):
     def run(self):
         while not self.url_queue.empty():
             postlist = []
-            newpost_count = 0
             currfeed = self.url_queue.get()
             feednum = self.listsize - self.url_queue.qsize()
             msg = (f'{feednum}/{self.listsize}: Worker {self.workernum+1} '
@@ -40,16 +39,15 @@ class Worker(QRunnable):
                     for p in parsedfeed.entries:
                         newpost = rsslib.parse_post(currfeed, p)
                         if newpost:
-                            if newpost.date > self.feeds[currfeed.id].last_read:
-                                newpost_count += 1
-                                newpost.strip_image_tags()
-                                postlist.append(newpost)
+                            newpost.strip_image_tags()
+                            postlist.append(newpost)
                 if postlist:
+                    unread_count = sum([1 for p in postlist if p.date > 
+                                       self.feeds[currfeed.id].last_read])
                     self.db_queue.put(dbhandler.DBJob('write_post_list', postlist))
                 self.url_queue.task_done()
-            #self.signals.result.emit(result) # Return the result of the process
             finally:
-                self.signals.finished.emit((newpost_count, currfeed.id)) # Done
+                self.signals.finished.emit((unread_count, currfeed.id)) # Done
         #self.db_queue.put('stopsignal')
 
 if __name__ == '__main__':
