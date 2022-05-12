@@ -16,7 +16,7 @@ import logging
 import urllib.request
 from functools import partial
 from os import listdir, path, getcwd
-from datetime import datetime
+from datetime import datetime, timezone
 from queue import Queue
 from subprocess import Popen
 from dateutil import tz
@@ -434,9 +434,12 @@ class ReaderUI(QMainWindow):
 
     def closeEvent(self, event):
         self.save_state()
+        self.db_job('SHUTDOWN')
+        self.db_conn.close()
         self.close()
 
     def load_feed_data(self):
+        self.feeds = {}
         feeds = rsslib.import_feeds_from_db(self.db_curs, self.db_conn)
         for f in feeds:
             self.feeds[f.id] = f
@@ -464,10 +467,15 @@ class ReaderUI(QMainWindow):
             fontweight = QFont.Bold if unread_count_str else False
             treenode.setFont(0, QFont('Segoe UI', 10, fontweight))
 
-            if self.feeds[feed_id].favicon:
-                pmap = QPixmap()
-                pmap.loadFromData(self.feeds[feed_id].favicon)
-                treenode.setIcon(0, QIcon(pmap))
+            fav = self.feeds[feed_id].favicon
+            if fav != '0':
+                try:
+                    pmap = QPixmap()
+                    pmap.loadFromData(self.feeds[feed_id].favicon)
+                except Exception as err:
+                    logging.error(f'Error setting pixmap - value was {self.feeds[feed_id].favicon}')
+                else:
+                    treenode.setIcon(0, QIcon(pmap))
             else:
                 treenode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
             #if unread_count_str:
@@ -525,6 +533,8 @@ class ReaderUI(QMainWindow):
 
     def exit_app(self):
         logging.info('Exiting app...')
+        self.db_job('SHUTDOWN')
+        self.db_conn.close()
         self.close()
 
     def create_db(self):
@@ -585,7 +595,7 @@ class ReaderUI(QMainWindow):
             self.setWindowTitle(f'{self.version_str} - {node_title}')
             self.db_job('get_feed_posts', node_id)
             # mark as read - change font, remove icon and unread count, and update DB
-            self.feeds[node_id].last_read = datetime.now().isoformat()
+            self.feeds[node_id].last_read = datetime.now(timezone.utc).isoformat('T', 'seconds')
             self.feeds[node_id].unread = 0
             self.db_job('mark_feed_read', node_id)
             self.format_feed_tree_node(self.ui.treeMain.currentItem(), node_id)
@@ -717,7 +727,7 @@ class ReaderUI(QMainWindow):
             if new:
                 self.load_feed_data()
                 self.setup_tree()
-                self.update_all_feeds()
+                #self.update_all_feeds()
                 self.setup_tree()
                 msg = f'Imported {new} new feeds'
                 add = '.' if not dupes else f' and skipped {dupes} duplicates.'

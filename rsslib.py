@@ -6,12 +6,13 @@ import logging
 from queue import Queue
 import feedparser
 from dateutil.parser import *
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 import string
 import opml
 import sqlitelib
 import time
+import pytz
 from PyQt5 import QtGui
 from urllib.parse import urljoin
 
@@ -19,8 +20,8 @@ errorlog = []
 
 class Feed:
     def __init__(self, id, title, folder, f_type, rss_url, html_url, tags=None,\
-                 last_read=0, favicon=None, etag='0',
-                 last_modified="Thu, 1 Jan 1970 00:00:00 GMT"):
+                 last_read=0, etag='0', last_modified="Thu, 1 Jan 1970 00:00:00 GMT",
+                 favicon=None):
         self.id = id
         self.title = title
         self.folder = folder
@@ -33,9 +34,9 @@ class Feed:
         self.tags = tags
         self.last_read = last_read
         self.unread = 0
-        self.favicon = favicon
         self.etag = etag
         self.last_modified = last_modified
+        self.favicon = favicon
         self.treenode = None
 
     def __repr__(self):
@@ -126,7 +127,7 @@ def parse_opml(infile):
 
 def parse_date(indate):
     try:
-        outdate = parse(indate).isoformat()
+        outdate = parse(indate).astimezone(pytz.timezone("UTC")).isoformat()
     except Exception as err:
         logging.error(f'Error parsing date {indate} - {err}')
         return indate
@@ -157,7 +158,7 @@ def parse_post(feed, postdata):
         elif hasattr(postdata, 'updated'):
             date = postdata['updated']
         else: # fallback is to use date the post was downloaded
-            date = datetime.now().isoformat()
+            date = datetime.now(timezone.utc).isoformat('T', 'seconds')
         date = parse_date(date)
 
         if hasattr(postdata, 'content'):
@@ -359,6 +360,7 @@ def main():
     #retrieve_feeds(feedlist)
     #save_error_log(errorlog)
     #export_opml_to_db('d:\\tmp\\blw10.opml', db_file)
+    k = retrieve_feed('http://tobolds.blogspot.com/feeds/posts/default', 1, 1)
 
 if __name__ == '__main__':
     main()

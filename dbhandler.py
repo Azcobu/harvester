@@ -32,17 +32,17 @@ class DBHandler(QObject):
 
         #identify task, run it, and return data if needed
         db_curs, db_conn = sqlitelib.connect_DB_file(self.db_filename)
-        db_conn.execute('PRAGMA journal_mode = WAL')
+        sqlitelib.set_sqlite_pragmas(db_curs, db_conn)
 
         while True:
             op = self.db_q.get()
             if op.name == 'write_post_list':
                 postlist = op.params
-                logging.info(f'Writing {len(postlist)} post(s) to DB - queue is {self.db_q.qsize()}')
+                # merge items in queue?
                 sqlitelib.write_post_list(postlist, db_curs, db_conn)
             elif op.name == 'mark_feed_read':
                 sqlitelib.mark_feed_read(op.params[0], db_curs, db_conn)
-                logging.debug(f'DB handler marked feed {op.params[0]} as read.')
+                #logging.debug(f'DB handler marked feed {op.params[0]} as read.')
             elif op.name == 'get_feed_posts':
                 feed_id = op.params[0]
                 results = sqlitelib.get_feed_posts(feed_id, db_curs, db_conn)
@@ -50,7 +50,11 @@ class DBHandler(QObject):
             elif op.name == 'update_lastmod_etag':
                 feed_id, last_mod, etag = op.params
                 sqlitelib.update_lastmod_etag(feed_id, last_mod, etag, db_curs, db_conn)
-                logging.debug(f'DB handler updated etag/lastmod for feed {feed_id}')
+                #logging.debug(f'DB handler updated etag/lastmod for feed {feed_id}')
+            elif op.name == 'SHUTDOWN':
+                db_conn.close()
+            logging.info(f'Running DB command {op.name} - queue is {self.db_q.qsize()}')
+            self.db_q.task_done()
         logging.debug('DB handler thread halting.')
 
         '''

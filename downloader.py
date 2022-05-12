@@ -39,23 +39,27 @@ class Worker(QRunnable):
             except Exception as err:
                 logging.error(f'Failed to read feed {currfeed.title} - {err}')
             else:
-                if parsedfeed.status == 304:
-                    logging.info(f'{feednum}/{self.listsize}: Skipping {currfeed.id} '
-                                 f'as it is unchanged.')
-                elif parsedfeed.status == 200:
-                    # update last modified time and etag, both locally and in DB
-                    self.update_lastmod_etag(parsedfeed, currfeed)
+                if hasattr(parsedfeed, 'status'):
+                    if parsedfeed.status == 304:
+                        logging.info(f'{feednum}/{self.listsize}: Skipping {currfeed.id} '
+                                     f'as it is unchanged.')
+                    elif str(parsedfeed.status)[0] in ['4', '5']:
+                        logging.error(f'Error retrieving feed {currfeed.title} - '
+                                      f'error code was {parsedfeed.status}')
+                    else:
+                        # update last modified time and etag, both locally and in DB
+                        self.update_lastmod_etag(parsedfeed, currfeed)
 
-                    if parsedfeed.entries:
-                        for p in parsedfeed.entries:
-                            newpost = rsslib.parse_post(currfeed, p)
-                            if newpost:
-                                newpost.strip_image_tags()
-                                postlist.append(newpost)
-                    if postlist:
-                        unread_count = sum([1 for p in postlist if p.date >
-                                           self.feeds[currfeed.id].last_read])
-                        self.db_queue.put(dbhandler.DBJob('write_post_list', postlist))
+                        if parsedfeed.entries:
+                            for p in parsedfeed.entries:
+                                newpost = rsslib.parse_post(currfeed, p)
+                                if newpost:
+                                    newpost.strip_image_tags()
+                                    postlist.append(newpost)
+                        if postlist:
+                            unread_count = sum([1 for p in postlist if p.date >
+                                               self.feeds[currfeed.id].last_read])
+                            self.db_queue.put(dbhandler.DBJob('write_post_list', postlist))
             finally:
                 self.signals.finished.emit((unread_count, currfeed.id))
             self.url_queue.task_done()

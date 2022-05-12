@@ -17,7 +17,7 @@ def connect_DB_file(db_file):
 
     try:
         conn = sqlite3.connect(db_file)
-        conn.execute('PRAGMA journal_mode = WAL')
+        #conn.execute('PRAGMA journal_mode = WAL')
     except Exception as err:
         logging.error(f'Error connecting to DB file {db_file}: {err}')
         return None
@@ -127,17 +127,18 @@ def write_post(post, curs=None, conn=None):
 def write_post_list(postlist, curs=None, conn=None):
     postssql = []
 
-    if not curs:
-        curs, conn = connect_DB(db_file)
-
     for post in postlist:
-        inpost = post.p_id, post.feed_id, post.title, post.author, post.url, post.date, post.content, 'None'
+        inpost = post.p_id, post.feed_id, post.title, post.author, post.url, post.date,\
+                 post.content, 'None'
         postssql.append(inpost)
 
-    curs.executemany("INSERT OR IGNORE INTO posts ('id', 'feed_id', 'title', 'author',\
-                     'url', 'date', 'content', 'flags') "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", postssql)
-    conn.commit()
+    try:
+        curs.executemany("INSERT OR IGNORE INTO posts ('id', 'feed_id', 'title',\
+                         'author', 'url', 'date', 'content', 'flags') "
+                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", postssql)
+        conn.commit()
+    except Exception as err:
+        logging.error('Error writing posts list - {err}. Postlist was {postlist}')
 
 def write_feed(feed, curs=None, conn=None):
     if not curs:
@@ -163,16 +164,15 @@ def write_feed_list(feedlist, curs=None, conn=None):
         print(f'{feed}')
         infeed = feed.id, feed.title, feed.folder, feed.f_type, feed.rss_url,\
                  feed.html_url, str(feed.tags), feed.last_read, feed.etag,\
-                 feed.last_modified #, feed.favicon
+                 feed.last_modified, feed.favicon
         feedsql.append(infeed)
 
     print([x for x in feedsql if 'Register' in x[1]])
 
     curs.executemany("INSERT OR IGNORE INTO feeds ('id', 'title', 'folder',\
                      'type', 'rss_url', 'html_url', 'tags', 'last_read',\
-                     'etag', 'last_modified') "
-                     #, 'favicon') "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feedsql)
+                     'etag', 'last_modified', 'favicon') "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", feedsql)
     conn.commit()
 
 def get_feed_posts(feed_id, curs=None, conn=None):
@@ -227,20 +227,20 @@ def vacuum(conn):
     print('DB maintenance complete.')
 
 def mark_old_as_read(numdays, curs=None, conn=None):
-    timeoffset = (datetime.now() - timedelta(days=numdays)).isoformat()
-    query = f'UPDATE `posts` SET `flags` = 1 WHERE `date` < "{timeoffset}";'
+    timeoffset = (datetime.now(timezone.utc) - timedelta(days=numdays)).isoformat('T', 'seconds')
+    query = f'UPDATE `posts` SET `flags` = 1 WHERE `date` < ?'
     # query = "SELECT * FROM `posts` WHERE `date` < date('now', '-3 day');"
-    curs.execute(query)
-    query2 = (f'UPDATE `feeds` SET `last_read` = "{timeoffset}" '
-              f'WHERE `last_read` < "{timeoffset}"')
-    curs.execute(query2)
+    curs.execute(query, (timeoffset,))
+    query2 = (f'UPDATE `feeds` SET `last_read` = ? '
+              f'WHERE `last_read` < ?')
+    curs.execute(query2, (timeoffset, timeoffset))
     conn.commit()
     #print(f'{curs.rowcount} posts marked as read.')
 
 def mark_feed_read(feed_id, curs, conn):
     query = f'UPDATE `posts` SET `flags` = 1 WHERE `feed_id` = ?;'
     curs.execute(query, (feed_id,))
-    timestamp = datetime.now().isoformat()
+    timestamp = datetime.now(timezone.utc).isoformat('T', 'seconds')
     query = f'UPDATE `feeds` SET `last_read` = ? WHERE `id` = ?;'
     curs.execute(query, (timestamp, feed_id,))
     conn.commit()
@@ -408,14 +408,29 @@ def update_lastmod_etag(feed_id, last_mod, etag, curs, conn):
     except Exception as err:
         logging.error(f'Error setting lastmod or etag for {feed_id} - {err}')
 
+def set_sqlite_pragmas(curs, conn):
+    # Use WAL mode (writers don't block readers):
+    #curs.execute('PRAGMA journal_mode = WAL')
+    # Use memory as temporary storage:
+    curs.execute('PRAGMA temp_store = MEMORY')
+    # Faster synchronization that still keeps the data safe:
+    curs.execute('PRAGMA synchronous = 1')
+    # Increase cache size (in this case to 32MB), the default is 2MB
+    curs.execute('PRAGMA cache_size = -32000') # negative number is intentional, it's a weird API
+
+
 def main():
-    pass
-    dbfile = 'd:\\tmp\\posts.db'
+    dbfile = 'd:\\test4.db'
     #dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
-    curs, conn = connect_DB_file(dbfile)
+    #curs, conn = connect_DB_file(dbfile)
     #get_data(curs, conn)
-    #newpost = Post(2, 'The Hypogeum', 'Father Inire', '2021-06-08', 'Certainly it is desirable to maintain in being a movement that has proved so useful in the past, and as long as the mirrors of the caller Hethor remain unbroken, she provides it with a plausible commander.')
-    #write_post(dbfile, 'vfdvdf', curs, conn)
+    '''
+    newpost = rsslib.Post(2, "http://new-sun.gov", "Chapter 1 - On Symbols",
+        "Gene Wolfe", "http://order-of-seekers.gov", date.today().isoformat(),
+        "We believe that we invent symbols. The truth is that they invent us; we "
+        "are their creatures, shaped by their hard, defining edges.", "None")
+    write_post(newpost, curs, conn)
+    '''
     #posttest = get_most_recent(5, curs, conn)
     #k = count_all_unread()
     #print(posttest)
@@ -435,7 +450,8 @@ def main():
     #print(text_search('symbol', curs, conn, None, 'month'))  # kryl
     #print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
-    print(list_feeds_over_post_count(0, curs, conn))
+    #print(list_feeds_over_post_count(0, curs, conn))
+    mark_old_as_read(3, 2, 2)
 
 if __name__ == '__main__':
     main()
