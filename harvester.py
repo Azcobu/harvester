@@ -434,8 +434,6 @@ class ReaderUI(QMainWindow):
 
     def closeEvent(self, event):
         self.save_state()
-        self.db_job('SHUTDOWN')
-        self.db_conn.close()
         self.close()
 
     def load_feed_data(self):
@@ -534,7 +532,7 @@ class ReaderUI(QMainWindow):
     def exit_app(self):
         logging.info('Exiting app...')
         self.db_job('SHUTDOWN')
-        self.db_conn.close()
+        self.db_conn.close() # QQQQ will be able to get rid of this when all DB work is done by handler
         self.close()
 
     def create_db(self):

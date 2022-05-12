@@ -136,7 +136,7 @@ def write_post_list(postlist, curs=None, conn=None):
         curs.executemany("INSERT OR IGNORE INTO posts ('id', 'feed_id', 'title',\
                          'author', 'url', 'date', 'content', 'flags') "
                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", postssql)
-        conn.commit()
+        #conn.commit()
     except Exception as err:
         logging.error('Error writing posts list - {err}. Postlist was {postlist}')
 
@@ -404,13 +404,13 @@ def update_lastmod_etag(feed_id, last_mod, etag, curs, conn):
     query = 'UPDATE `feeds` SET `last_modified` = ?, `etag` = ? WHERE `id` = ?'
     try:
         curs.execute(query, (last_mod, etag, feed_id))
-        conn.commit()
+        #conn.commit()
     except Exception as err:
         logging.error(f'Error setting lastmod or etag for {feed_id} - {err}')
 
 def set_sqlite_pragmas(curs, conn):
     # Use WAL mode (writers don't block readers):
-    #curs.execute('PRAGMA journal_mode = WAL')
+    curs.execute('PRAGMA journal_mode = WAL')
     # Use memory as temporary storage:
     curs.execute('PRAGMA temp_store = MEMORY')
     # Faster synchronization that still keeps the data safe:

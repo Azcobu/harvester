@@ -29,6 +29,7 @@ class DBHandler(QObject):
     def exec(self):
         stopsfound = 0
         postlist = []
+        comm_count = 0
 
         #identify task, run it, and return data if needed
         db_curs, db_conn = sqlitelib.connect_DB_file(self.db_filename)
@@ -54,6 +55,13 @@ class DBHandler(QObject):
             elif op.name == 'SHUTDOWN':
                 db_conn.close()
             logging.info(f'Running DB command {op.name} - queue is {self.db_q.qsize()}')
+
+            comm_count += 1
+            if comm_count % 100 == 0 or self.db_q.qsize() == 0:
+                try:
+                    db_conn.commit()
+                except:
+                    pass
             self.db_q.task_done()
         logging.debug('DB handler thread halting.')
 
