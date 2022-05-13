@@ -15,7 +15,7 @@ import threading
 import logging
 import urllib.request
 from functools import partial
-from os import listdir, path, getcwd
+from os import listdir, path, getcwd, environ
 from datetime import datetime, timezone
 from queue import Queue
 from subprocess import Popen
@@ -71,6 +71,7 @@ class ReaderUI(QMainWindow):
 
     def __init__(self):
         super(ReaderUI, self).__init__()
+        environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--enable-logging --log-level=3"
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.webEngine = QWebEngineView()
