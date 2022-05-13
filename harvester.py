@@ -164,7 +164,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionDecrease_Text_Size.triggered.connect(self.decrease_text_size)
 
         # Tools
-        self.ui.actionUpdate_All_Feeds.triggered.connect(self.update_all_feeds)
+        self.ui.actionUpdate_All_Feeds.triggered.connect(lambda: self.update_all_feeds(True, False))
         self.ui.actionUpdate_Current_Feed.triggered.connect(self.update_feed)
         self.ui.actionUpdate_Reddit.triggered.connect(self.update_reddit)
         self.ui.actionSearch_Feeds.triggered.connect(self.search_feeds)
@@ -538,7 +538,6 @@ class ReaderUI(QMainWindow):
         logging.info('Exiting app...')
         self.save_state()
         self.db_job('SHUTDOWN')
-        #self.icon_thread.stop()
         self.db_conn.close() # QQQQ will be able to get rid of this when all DB work is done by handler
         self.close()
 
@@ -691,8 +690,8 @@ class ReaderUI(QMainWindow):
             return
 
         q = self.generate_view_sorted_feed_queue()
-        for x in range(self.threadpool.maxThreadCount()):
-            worker = downloader.Worker(listsize, x, q, self.db_q, self.feeds, True, True)
+        for num in range(self.threadpool.maxThreadCount()):
+            worker = downloader.Worker(listsize, num, q, self.db_q, self.feeds, dl_feeds, dl_icons)
             worker.signals.started.connect(self.node_started_downloading_update_ui)
             worker.signals.finished.connect(self.node_finished_downloading_update_ui)
             worker.signals.icondata.connect(self.update_feed_icon)

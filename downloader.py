@@ -26,13 +26,14 @@ class Worker(QRunnable):
         self.dl_feeds = dl_feeds
         self.dl_icons = dl_icons
         self.signals = WorkerSignals()
-        self.feednum = listsize - feed_queue.qsize()
+        self.feednum = 0
         logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     @pyqtSlot()
     def run(self):
         while not self.feed_queue.empty():
             feed = self.feed_queue.get()
+            self.feednum = self.listsize - self.feed_queue.qsize()
 
             self.generate_status_msg(feed)
 

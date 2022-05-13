@@ -410,7 +410,7 @@ def update_lastmod_etag(feed_id, last_mod, etag, curs, conn):
 
 def set_sqlite_pragmas(curs, conn):
     # Use WAL mode (writers don't block readers):
-    curs.execute('PRAGMA journal_mode = WAL')
+    #curs.execute('PRAGMA journal_mode = WAL')
     # Use memory as temporary storage:
     curs.execute('PRAGMA temp_store = MEMORY')
     # Faster synchronization that still keeps the data safe:
