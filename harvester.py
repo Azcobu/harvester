@@ -11,7 +11,6 @@
 # delete folder and all feeds in it?
 
 import sys
-import threading
 import logging
 import urllib.request
 from functools import partial
@@ -39,7 +38,6 @@ import resources.breeze_resources
 from newsub import NewSubDialog
 import downloader
 import dbhandler
-import icons
 
 class CustomWebEnginePage(QWebEnginePage):
     # Custom WebEnginePage to customize how we handle link navigation
@@ -68,6 +66,7 @@ class ReaderUI(QMainWindow):
     redd_dir = ''
     first_run_mode = True
     db_q = Queue()
+    test_data = 'a'
 
     def __init__(self):
         super(ReaderUI, self).__init__()
@@ -213,13 +212,6 @@ class ReaderUI(QMainWindow):
         self.db_thread.started.connect(self.db_handler.run)
         self.db_thread.start()
         self.db_handler.signals.feedposts.connect(self.display_post_data)
-
-        self.icon_thread = QThread()
-        self.icon_handler = icons.IconHandler(self.feeds, self.db_q)
-        self.icon_handler.moveToThread(self.icon_thread)
-        self.icon_thread.started.connect(self.icon_handler.run)
-        self.icon_handler.signals.icondata.connect(self.update_feed_icon)
-        self.icon_thread.start()
 
     def db_job(self, cmd, *params):
         self.db_q.put(dbhandler.DBJob(cmd, params))
@@ -545,8 +537,8 @@ class ReaderUI(QMainWindow):
     def exit_app(self):
         logging.info('Exiting app...')
         self.save_state()
-        self.icon_handler.stop()
         self.db_job('SHUTDOWN')
+        #self.icon_thread.stop()
         self.db_conn.close() # QQQQ will be able to get rid of this when all DB work is done by handler
         self.close()
 
@@ -680,31 +672,30 @@ class ReaderUI(QMainWindow):
         self.format_feed_tree_node(self.feeds[feed_id].treenode, feed_id)
         self.update_tree_node_background(feed_id, 'finished')
 
-    def update_all_feeds(self):
-        mainwin = self.ui
-
-        if not is_internet_on():
-            self.ui.statusbar.showMessage(f'Not connected to the Internet.')
-            return
-
-        q = Queue()
-        #numworkers = 10
-        listsize = len(self.feeds)
-        #self.ui.progressBar.setMinimum(0)
-        #self.ui.progressBar.setMaximum(listsize)
-
+    def generate_view_sorted_feed_queue(self):
         # generate queue in tree display order rather than alphabetically
+        q = Queue()
         view_sort = sorted([x for x in self.feeds.values() if x.folder],
                     key = lambda x: (x.folder, x.title.lower()))
         view_sort += sorted([x for x in self.feeds.values() if not x.folder],
                     key = lambda x: x.title.lower())
         for feed in view_sort:
             q.put(feed)
+        return q
 
+    def update_all_feeds(self, dl_feeds=True, dl_icons=False):
+        listsize = len(self.feeds)
+
+        if not is_internet_on():
+            self.ui.statusbar.showMessage(f'Not connected to the Internet.')
+            return
+
+        q = self.generate_view_sorted_feed_queue()
         for x in range(self.threadpool.maxThreadCount()):
-            worker = downloader.Worker(listsize, x, q, self.db_q, self.feeds)
+            worker = downloader.Worker(listsize, x, q, self.db_q, self.feeds, True, True)
             worker.signals.started.connect(self.node_started_downloading_update_ui)
             worker.signals.finished.connect(self.node_finished_downloading_update_ui)
+            worker.signals.icondata.connect(self.update_feed_icon)
             self.threadpool.start(worker)
 
         '''
@@ -723,7 +714,7 @@ class ReaderUI(QMainWindow):
                                           f'{newsub.rss_url} to folder {newsub.folder}')
             sqlitelib.write_feed(newsub, self.db_curs, self.db_conn)
             # should spin this off into its own thread too
-            icons.save_icon(newsub.id, newsub.html_url, self.db_curs, self.db_conn)
+            # save_icon(newsub.id, newsub.html_url, self.db_curs, self.db_conn)
             self.update_feed(newsub)
             self.load_feed_data()
             self.setup_tree()
@@ -740,7 +731,7 @@ class ReaderUI(QMainWindow):
             if new:
                 self.load_feed_data()
                 self.setup_tree()
-                #self.update_all_feeds()
+                self.update_all_feeds(True, True)
                 msg = f'Imported {new} new feeds'
                 add = '.' if not dupes else f' and skipped {dupes} duplicates.'
                 self.ui.statusbar.showMessage(msg + add)

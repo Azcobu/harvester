@@ -21,6 +21,7 @@ class DBHandler(QObject):
         self.db_q = db_q
         self.db_filename = db_filename
         self.signals = DBSignals()
+        self.running = True
 
     def run(self):
         self.exec()
@@ -33,7 +34,7 @@ class DBHandler(QObject):
         db_curs, db_conn = sqlitelib.connect_DB_file(self.db_filename)
         sqlitelib.set_sqlite_pragmas(db_curs, db_conn)
 
-        while True:
+        while self.running or not self.db_q.empty():
             op = self.db_q.get()
             if op.name == 'write_post_list':
                 postlist = op.params
@@ -53,6 +54,8 @@ class DBHandler(QObject):
                 feed_id, data = op.params
                 sqlitelib.update_favicon(feed_id, data, db_curs, db_conn)
             elif op.name == 'SHUTDOWN':
+                self.running = False
+                db_conn.commit()
                 db_conn.close()
             logging.debug(f'Running DB command {op.name} - queue is {self.db_q.qsize()}')
 
@@ -64,7 +67,6 @@ class DBHandler(QObject):
                     pass
             self.db_q.task_done()
 
-        db_conn.commit()
         logging.debug(f'DB handler thread halting.')
 
         '''
