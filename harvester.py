@@ -207,11 +207,18 @@ class ReaderUI(QMainWindow):
 
         # single long-term thread for DB handler
         self.db_thread = QThread()
-        self.db_handler = dbhandler.DBHandler(self.db_q, 10, self.db_filename)
+        self.db_handler = dbhandler.DBHandler(self.db_q, self.db_filename)
         self.db_handler.moveToThread(self.db_thread)
         self.db_thread.started.connect(self.db_handler.run)
         self.db_thread.start()
         self.db_handler.signals.feedposts.connect(self.display_post_data)
+
+        self.icon_thread = QThread()
+        self.icon_handler = icons.IconHandler(self.feeds, self.db_q)
+        self.icon_handler.moveToThread(self.icon_thread)
+        self.icon_thread.started.connect(self.icon_handler.run)
+        self.icon_handler.signals.icondata.connect(self.update_feed_icon)
+        self.icon_thread.start()
 
     def db_job(self, cmd, *params):
         self.db_q.put(dbhandler.DBJob(cmd, params))
@@ -433,8 +440,7 @@ class ReaderUI(QMainWindow):
                 self.setup_tree()
 
     def closeEvent(self, event):
-        self.save_state()
-        self.close()
+        self.exit_app()
 
     def load_feed_data(self):
         self.feeds = {}
@@ -450,8 +456,14 @@ class ReaderUI(QMainWindow):
 
     def update_feeds_unread_counts(self):
         unreads = sqlitelib.count_all_unread(self.db_curs, self.db_conn)
-        for k, v in unreads.items():
-            self.feeds[k].unread = v
+        for k, v in self.feeds.items():
+            self.feeds[k].unread = unreads[k] if k in unreads else 0
+
+    def update_feed_icon(self, incdata):
+        feed_id, icondata = incdata
+        logging.debug(f'Updating icon for {feed_id}')
+        self.feeds[feed_id].favicon = icondata
+        self.format_feed_tree_node(self.feeds[feed_id].treenode, feed_id)
 
     def format_feed_tree_node(self, treenode, feed_id):
         if self.feeds[feed_id].unread:
@@ -531,6 +543,8 @@ class ReaderUI(QMainWindow):
 
     def exit_app(self):
         logging.info('Exiting app...')
+        self.save_state()
+        self.icon_handler.stop()
         self.db_job('SHUTDOWN')
         self.db_conn.close() # QQQQ will be able to get rid of this when all DB work is done by handler
         self.close()
@@ -659,7 +673,7 @@ class ReaderUI(QMainWindow):
         self.update_tree_node_background(feed_id, 'downloading')
 
     def node_finished_downloading_update_ui(self, indata):
-        num_new, feed_id = indata[0], indata[1]
+        num_new, feed_id = indata
         # QQQQ note not += because new_num counts all posts since last_unread every time
         self.feeds[feed_id].unread = num_new
         self.format_feed_tree_node(self.feeds[feed_id].treenode, feed_id)
@@ -726,7 +740,6 @@ class ReaderUI(QMainWindow):
                 self.load_feed_data()
                 self.setup_tree()
                 #self.update_all_feeds()
-                self.setup_tree()
                 msg = f'Imported {new} new feeds'
                 add = '.' if not dupes else f' and skipped {dupes} duplicates.'
                 self.ui.statusbar.showMessage(msg + add)
@@ -882,7 +895,7 @@ class ReaderUI(QMainWindow):
                             f'<a id="anchor{anchor_id}" class="{isread}" '
                             f'href="{post.url}">{post.title}</a> '
                             f' {anchortext} '
-                            f'<h5>{post.author} on {convdate}</h5>'
+                            f'<h5><i>{post.author} on {convdate}</i></h5>'
                             f'<p>{post.content}'
                             f'</div><hr class="new">')
                 anchor_id += 1
@@ -1121,7 +1134,8 @@ def is_internet_on():
     return False
 
 def convert_isodate_to_fulldate(isodate):
-    formatstr = '%A, %d %B %Y %I:%M:%S %p'
+    # check this works on Linux - may need %-I there instead
+    formatstr = '%A, %d %B %Y %#I:%M %p'
     try:
         utctime = parse(isodate)
         localtz = tz.tzlocal()

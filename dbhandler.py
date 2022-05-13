@@ -16,10 +16,9 @@ class DBSignals(QObject):
     feedposts = pyqtSignal(list)
 
 class DBHandler(QObject):
-    def __init__(self, db_q, numworkers, db_filename):
+    def __init__(self, db_q, db_filename):
         super(DBHandler, self).__init__()
         self.db_q = db_q
-        self.numworkers = numworkers
         self.db_filename = db_filename
         self.signals = DBSignals()
 
@@ -31,7 +30,6 @@ class DBHandler(QObject):
         postlist = []
         comm_count = 0
 
-        #identify task, run it, and return data if needed
         db_curs, db_conn = sqlitelib.connect_DB_file(self.db_filename)
         sqlitelib.set_sqlite_pragmas(db_curs, db_conn)
 
@@ -39,7 +37,6 @@ class DBHandler(QObject):
             op = self.db_q.get()
             if op.name == 'write_post_list':
                 postlist = op.params
-                # merge items in queue?
                 sqlitelib.write_post_list(postlist, db_curs, db_conn)
             elif op.name == 'mark_feed_read':
                 sqlitelib.mark_feed_read(op.params[0], db_curs, db_conn)
@@ -52,18 +49,23 @@ class DBHandler(QObject):
                 feed_id, last_mod, etag = op.params
                 sqlitelib.update_lastmod_etag(feed_id, last_mod, etag, db_curs, db_conn)
                 #logging.debug(f'DB handler updated etag/lastmod for feed {feed_id}')
+            elif op.name == 'update_favicon':
+                feed_id, data = op.params
+                sqlitelib.update_favicon(feed_id, data, db_curs, db_conn)
             elif op.name == 'SHUTDOWN':
                 db_conn.close()
-            logging.info(f'Running DB command {op.name} - queue is {self.db_q.qsize()}')
+            logging.debug(f'Running DB command {op.name} - queue is {self.db_q.qsize()}')
 
             comm_count += 1
-            if comm_count % 100 == 0 or self.db_q.qsize() == 0:
+            if comm_count % 50 == 0 or self.db_q.qsize() == 0:
                 try:
                     db_conn.commit()
                 except:
                     pass
             self.db_q.task_done()
-        logging.debug('DB handler thread halting.')
+
+        db_conn.commit()
+        logging.debug(f'DB handler thread halting.')
 
         '''
         while stopsfound < numworkers:
