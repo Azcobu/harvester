@@ -470,24 +470,24 @@ class ReaderUI(QMainWindow):
             fontweight = QFont.Bold if unread_count_str else False
             treenode.setFont(0, QFont('Segoe UI', 10, fontweight))
 
+            default_icon = QIcon(':/icons/icons/icons8-open-book-100-2.png')
             fav = self.feeds[feed_id].favicon
-            if fav != '0':
+            if fav:
                 try:
                     pmap = QPixmap()
                     pmap.loadFromData(self.feeds[feed_id].favicon)
+                    testicon = QIcon(pmap)
                 except Exception as err:
                     logging.error(f'Error setting pixmap - value was {self.feeds[feed_id].favicon}')
                 else:
-                    treenode.setIcon(0, QIcon(pmap))
-            else:
-                treenode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
-            #if unread_count_str:
-            #    treenode.setIcon(0, QIcon(':/icons/icons/icons8-open-book-100-2.png'))
+                    if not testicon.isNull():
+                        default_icon = testicon
+            treenode.setIcon(0, default_icon)
+
         except RuntimeError as err: # caused by QT hiding or deleting a node
             pass
 
     def setup_tree(self):
-        # Need to evaluate unread count - worth doing every time?
         self.ui.treeMain.clear()
 
         for f in self.folderlist:
@@ -540,6 +540,7 @@ class ReaderUI(QMainWindow):
         self.db_job('SHUTDOWN')
         self.db_conn.close() # QQQQ will be able to get rid of this when all DB work is done by handler
         self.close()
+        QApplication.quit()
 
     def create_db(self):
         # QQQQ offer to add sample feeds to new DB
@@ -648,14 +649,14 @@ class ReaderUI(QMainWindow):
         self.ui.search_toolbar.show()
 
     def update_tree_node_background(self, feed_id, mode):
-        node = self.feeds[feed_id].treenode
-        if node:
+        treenode = self.feeds[feed_id].treenode
+        if treenode:
             try:
                 if mode == 'downloading':
-                    node.setBackground(0, QtGui.QColor(16, 16, 128, 255))
-                    #node.setBackground(0, QtGui.QColor(61, 174, 233, 255))
+                    treenode.setBackground(0, QtGui.QColor(16, 16, 128, 255))
+                    #treenode.setBackground(0, QtGui.QColor(61, 174, 233, 255))
                 elif mode == 'finished':
-                    node.setData(0, Qt.BackgroundRole, None)
+                    treenode.setData(0, Qt.BackgroundRole, None)
             except Exception as err:
                 pass
 
@@ -886,7 +887,8 @@ class ReaderUI(QMainWindow):
                             f'<a id="anchor{anchor_id}" class="{isread}" '
                             f'href="{post.url}">{post.title}</a> '
                             f' {anchortext} '
-                            f'<h5><i>{post.author} on {convdate}</i></h5>'
+                            f'<h5><i><a href="{post.feed_id}">{self.feeds[post.feed_id].title}</a> - '
+                            f'{post.author} on {convdate}</i></h5>'
                             f'<p>{post.content}'
                             f'</div><hr class="new">')
                 anchor_id += 1

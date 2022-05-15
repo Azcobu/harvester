@@ -177,8 +177,8 @@ def write_feed_list(feedlist, curs=None, conn=None):
 
 def get_feed_posts(feed_id, curs=None, conn=None):
     try:
-        query = f'SELECT * FROM `posts` WHERE `feed_id` = "{feed_id}" ORDER BY `date` DESC;'
-        curs.execute(query)
+        query = f'SELECT * FROM `posts` WHERE `feed_id` = ? ORDER BY `date` DESC;'
+        curs.execute(query, (feed_id,))
         results = curs.fetchall()
         return convert_results_to_postlist(results)
     except Exception as err:

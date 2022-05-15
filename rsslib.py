@@ -144,7 +144,7 @@ def parse_post(feed, postdata):
         if hasattr(postdata, 'title'):
             title = postdata['title']
         else:
-            title = "Untitled Feed"
+            title = "Untitled Post"
 
         if hasattr(postdata, 'author'):
             author = postdata['author']

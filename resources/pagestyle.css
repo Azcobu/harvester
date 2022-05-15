@@ -8,6 +8,10 @@ body {
 	    font-family: Georgia;
 }
 
+a:link {
+  color: royalblue;
+}
+
 .post {
 		background: black; 
 		/*border: solid; 
@@ -23,7 +27,7 @@ body {
 			  display: inline-block;
 			  width:90%;}
 
-.post .unread { color: blue;
+.post .unread { color: royalblue;
                 font-weight: bold;
 				display: inline-block;
 				width:90%;}
