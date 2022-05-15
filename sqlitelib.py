@@ -167,8 +167,6 @@ def write_feed_list(feedlist, curs=None, conn=None):
                  feed.last_modified, feed.favicon
         feedsql.append(infeed)
 
-    print([x for x in feedsql if 'Register' in x[1]])
-
     curs.executemany("INSERT OR IGNORE INTO feeds ('id', 'title', 'folder',\
                      'type', 'rss_url', 'html_url', 'tags', 'last_read',\
                      'etag', 'last_modified', 'favicon') "

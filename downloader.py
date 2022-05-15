@@ -15,10 +15,10 @@ class WorkerSignals(QObject):
     icondata = pyqtSignal(tuple)
 
 class Worker(QRunnable):
-    def __init__(self, listsize, workernum, feed_queue, db_queue, feeds,
+    def __init__(self, max_q_size, workernum, feed_queue, db_queue, feeds,
                  dl_feeds = True, dl_icons=False):
         super(Worker, self).__init__()
-        self.listsize = listsize
+        self.max_q_size = max_q_size
         self.workernum = workernum
         self.feed_queue = feed_queue
         self.db_queue = db_queue
@@ -33,7 +33,7 @@ class Worker(QRunnable):
     def run(self):
         while not self.feed_queue.empty():
             feed = self.feed_queue.get()
-            self.feednum = self.listsize - self.feed_queue.qsize()
+            self.feednum = self.max_q_size - self.feed_queue.qsize()
 
             self.generate_status_msg(feed)
 
@@ -46,7 +46,7 @@ class Worker(QRunnable):
             self.feed_queue.task_done()
 
     def generate_status_msg(self, feed):
-        msg = (f"{self.feednum}/{self.listsize}: Worker {self.workernum+1} "
+        msg = (f"{self.feednum}/{self.max_q_size}: Worker {self.workernum+1} "
                f"retrieving {feed.title}")
         #logging.info(msg)
         self.signals.started.emit((msg, feed.id))
@@ -65,7 +65,7 @@ class Worker(QRunnable):
         else:
             if hasattr(parsedfeed, "status"):
                 if parsedfeed.status == 304:
-                    logging.info(f"{self.feednum}/{self.listsize}: Skipping {feed.id} "
+                    logging.info(f"{self.feednum}/{self.max_q_size}: Skipping {feed.id} "
                                  f"as it is unchanged.")
                 elif str(parsedfeed.status)[0] in ["4", "5"]:
                     logging.error(f"Error retrieving feed {feed.title} - "

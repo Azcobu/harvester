@@ -131,7 +131,7 @@ class ReaderUI(QMainWindow):
         #connect actions
         self.newSubAction.triggered.connect(self.new_sub)
         self.markReadAction.triggered.connect(self.mark_read)
-        self.updateFeedAction.triggered.connect(self.update_feed)
+        self.updateFeedAction.triggered.connect(self.update_single_feed)
         self.unsubAction.triggered.connect(self.unsubscribe_feed)
         self.feedProperties.triggered.connect(self.view_feed_properties)
         self.actionSearch_Selected_Feed.triggered.connect(self.search_single_feed)
@@ -164,8 +164,9 @@ class ReaderUI(QMainWindow):
         self.ui.actionDecrease_Text_Size.triggered.connect(self.decrease_text_size)
 
         # Tools
-        self.ui.actionUpdate_All_Feeds.triggered.connect(lambda: self.update_all_feeds(True, False))
-        self.ui.actionUpdate_Current_Feed.triggered.connect(self.update_feed)
+        self.ui.actionUpdate_All_Feeds.triggered.connect(
+            lambda: self.update_queued_feeds(None, True, False))
+        self.ui.actionUpdate_Current_Feed.triggered.connect(self.update_single_feed)
         self.ui.actionUpdate_Reddit.triggered.connect(self.update_reddit)
         self.ui.actionSearch_Feeds.triggered.connect(self.search_feeds)
         self.ui.actionSearch_Selected_Feed.triggered.connect(self.search_single_feed)
@@ -197,7 +198,7 @@ class ReaderUI(QMainWindow):
         self.locate_reddit_dir()
         self.setup_tree()
         self.view_most_recent()
-        #self.update_all_feeds()
+        #self.update_queued_feeds()
 
     def init_threads(self):
         # reuseable thread pool for downloaders
@@ -683,16 +684,21 @@ class ReaderUI(QMainWindow):
             q.put(feed)
         return q
 
-    def update_all_feeds(self, dl_feeds=True, dl_icons=False):
-        listsize = len(self.feeds)
-
+    def update_queued_feeds(self, specified_feeds=None, dl_feeds=True, dl_icons=False):
         if not is_internet_on():
             self.ui.statusbar.showMessage(f'Not connected to the Internet.')
             return
 
-        q = self.generate_view_sorted_feed_queue()
-        for num in range(self.threadpool.maxThreadCount()):
-            worker = downloader.Worker(listsize, num, q, self.db_q, self.feeds, dl_feeds, dl_icons)
+        if specified_feeds:
+            q = Queue()
+            for f in specified_feeds:
+                q.put(f)
+        else:
+            q = self.generate_view_sorted_feed_queue()
+        max_q_size = q.qsize()
+
+        for num in range(min(self.threadpool.maxThreadCount(), q.qsize())):
+            worker = downloader.Worker(max_q_size, num, q, self.db_q, self.feeds, dl_feeds, dl_icons)
             worker.signals.started.connect(self.node_started_downloading_update_ui)
             worker.signals.finished.connect(self.node_finished_downloading_update_ui)
             worker.signals.icondata.connect(self.update_feed_icon)
@@ -709,15 +715,13 @@ class ReaderUI(QMainWindow):
         # QQQQ should probably use threading for instances where other DB activity is happening
         newsubform = NewSubDialog(self)
         if newsubform.exec():
-            newsub = newsubform.get_inputs()
-            self.ui.statusbar.showMessage(f'Adding new subscription: {newsub.title} - '
-                                          f'{newsub.rss_url} to folder {newsub.folder}')
-            sqlitelib.write_feed(newsub, self.db_curs, self.db_conn)
-            # should spin this off into its own thread too
-            # save_icon(newsub.id, newsub.html_url, self.db_curs, self.db_conn)
-            self.update_feed(newsub)
+            newfeed = newsubform.get_inputs()
+            self.ui.statusbar.showMessage(f'Adding new subscription: {newfeed.title} - '
+                                          f'{newfeed.rss_url} to folder {newfeed.folder}')
+            sqlitelib.write_feed(newfeed, self.db_curs, self.db_conn)
             self.load_feed_data()
             self.setup_tree()
+            self.update_queued_feeds([newfeed], True, True)
 
     def mark_read(self):
         logging.debug(f'Mark feed {self.node_name} - {self.node_id} read.')
@@ -731,10 +735,10 @@ class ReaderUI(QMainWindow):
             if new:
                 self.load_feed_data()
                 self.setup_tree()
-                self.update_all_feeds(True, True)
                 msg = f'Imported {new} new feeds'
                 add = '.' if not dupes else f' and skipped {dupes} duplicates.'
                 self.ui.statusbar.showMessage(msg + add)
+                self.update_queued_feeds(None, True, True)
             else:
                 self.ui.statusbar.showMessage(f'Feed import failed.')
 
@@ -775,15 +779,14 @@ class ReaderUI(QMainWindow):
 
         self.ui.statusbar.showMessage(f'Feeds exported to file {fname}.')
 
-    def update_feed(self, feed=None):
-        #QQQQ convert to using downloader thread
+    def update_single_feed(self, feed=None):
         if not feed:
             node_id = self.ui.treeMain.currentItem().text(1)
             feed = self.feeds[node_id]
         logging.debug(f'Updating {feed.title}')
         self.ui.statusbar.showMessage(f'Updating {feed.title}')
-        rsslib.retrieve_feed(feed, self.db_curs, self.db_conn)
-        sqlitelib.get_feed_posts(feed.id, self.db_curs, self.db_conn)
+        self.update_queued_feeds([feed], True, True)
+        # QQQQ should update current page
 
     def search_feeds(self):
         srchdialog = SrchDialog(self)

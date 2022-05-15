@@ -16,12 +16,15 @@ import pytz
 from PyQt5 import QtGui
 from urllib.parse import urljoin
 
+from lxml import etree, html
+from io import StringIO, BytesIO
+
 errorlog = []
 
 class Feed:
     def __init__(self, id, title, folder, f_type, rss_url, html_url, tags=None,\
-                 last_read=0, etag='0', last_modified="Thu, 1 Jan 1970 00:00:00 GMT",
-                 favicon=None):
+                 last_read="1970-01-01T00:00:00+00:00", etag='0',
+                 last_modified="Thu, 1 Jan 1970 00:00:00 GMT", favicon=None):
         self.id = id
         self.title = title
         self.folder = folder
@@ -324,7 +327,8 @@ def check_feed(feed_url):
         parsedfeed = feedparser.parse(feed_url)
         title = parsedfeed.feed.title
         newfeed = Feed(feed_url, parsedfeed.feed.title, None, 'rss', feed_url,
-                       parsedfeed.feed.link, '[]', 0, None, 0, None)
+                       parsedfeed.feed.link, '[]', "1970-01-01T00:00:00+00:00",
+                       None, "Thu, 1 Jan 1970 00:00:00 GMT", None)
         return newfeed
     except Exception as err:
         logging.error(f'Failed to parse feed at {feed_url} - {err}')

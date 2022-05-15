@@ -35,9 +35,11 @@ class DBHandler(QObject):
         sqlitelib.set_sqlite_pragmas(db_curs, db_conn)
 
         while self.running or not self.db_q.empty():
+            specmsg = ''
             op = self.db_q.get()
             if op.name == 'write_post_list':
                 postlist = op.params
+                specmsg = f'writing {len(postlist)} posts to DB - '
                 sqlitelib.write_post_list(postlist, db_curs, db_conn)
             elif op.name == 'mark_feed_read':
                 sqlitelib.mark_feed_read(op.params[0], db_curs, db_conn)
@@ -57,7 +59,7 @@ class DBHandler(QObject):
                 self.running = False
                 db_conn.commit()
                 db_conn.close()
-            logging.debug(f'Running DB command {op.name} - queue is {self.db_q.qsize()}')
+            logging.debug(f'DB command {op.name} - {specmsg}queue is {self.db_q.qsize()}')
 
             comm_count += 1
             if comm_count % 50 == 0 or self.db_q.qsize() == 0:
