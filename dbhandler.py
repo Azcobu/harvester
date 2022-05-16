@@ -55,14 +55,18 @@ class DBHandler(QObject):
             elif op.name == 'update_favicon':
                 feed_id, data = op.params
                 sqlitelib.update_favicon(feed_id, data, db_curs, db_conn)
+            elif op.name == 'mark_older_read':
+                sqlitelib.mark_old_as_read(op.params[0], db_curs, db_conn)
+            elif op.name == 'write_feed':
+                sqlitelib.write_feed(newfeed, db_curs, db_conn)
             elif op.name == 'SHUTDOWN':
                 self.running = False
                 db_conn.commit()
                 db_conn.close()
-            logging.debug(f'DB command {op.name} - {specmsg}queue is {self.db_q.qsize()}')
+            logging.debug(f'DB command {op.name} - CC {comm_count} - {specmsg}queue is {self.db_q.qsize()}')
 
             comm_count += 1
-            if comm_count % 50 == 0 or self.db_q.qsize() == 0:
+            if comm_count % 20 == 0 or self.db_q.empty():
                 try:
                     db_conn.commit()
                 except:
@@ -70,6 +74,8 @@ class DBHandler(QObject):
             self.db_q.task_done()
 
         logging.debug(f'DB handler thread halting.')
+        #db_curs.execute('PRAGMA analysis_limit=400;')
+        #db_curs.execute('PRAGMA optimize;')
 
         '''
         while stopsfound < numworkers:

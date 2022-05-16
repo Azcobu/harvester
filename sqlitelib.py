@@ -17,7 +17,6 @@ def connect_DB_file(db_file):
 
     try:
         conn = sqlite3.connect(db_file)
-        #conn.execute('PRAGMA journal_mode = WAL')
     except Exception as err:
         logging.error(f'Error connecting to DB file {db_file}: {err}')
         return None
@@ -233,7 +232,6 @@ def mark_old_as_read(numdays, curs=None, conn=None):
               f'WHERE `last_read` < ?')
     curs.execute(query2, (timeoffset, timeoffset))
     conn.commit()
-    #print(f'{curs.rowcount} posts marked as read.')
 
 def mark_feed_read(feed_id, curs, conn):
     query = f'UPDATE `posts` SET `flags` = 1 WHERE `feed_id` = ?;'
@@ -415,7 +413,8 @@ def set_sqlite_pragmas(curs, conn):
     curs.execute('PRAGMA synchronous = 1')
     # Increase cache size (in this case to 32MB), the default is 2MB
     curs.execute('PRAGMA cache_size = -32000') # negative number is intentional, it's a weird API
-
+    # Automatically resize DB if items are deleted
+    curs.execute('PRAGMA auto_vacuum = 1')
 
 def main():
     dbfile = 'd:\\test4.db'

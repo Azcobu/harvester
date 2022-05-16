@@ -70,7 +70,7 @@ class ReaderUI(QMainWindow):
 
     def __init__(self):
         super(ReaderUI, self).__init__()
-        environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--enable-logging --log-level=3"
+        #environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--enable-logging --log-level=3"
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.ui.webEngine = QWebEngineView()
@@ -148,7 +148,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionExport_Feeds.triggered.connect(self.export_feeds_to_opml)
         self.ui.actionCreate_Database.triggered.connect(self.create_db)
         self.ui.actionLoad_Database.triggered.connect(self.menu_load_db)
-        #self.ui.actionDelete_Older_Posts.triggered.connect(self.delete_older_posts)
+        self.ui.actionDelete_Older_Posts.triggered.connect(self.delete_older_posts)
         self.ui.actionDatabase_Maintenance.triggered.connect(self.maintain_DB)
         self.ui.actionSelect_Reddit_Directory.triggered.connect(self.locate_reddit_dir)
         self.ui.actionExit.triggered.connect(self.exit_app)
@@ -591,14 +591,14 @@ class ReaderUI(QMainWindow):
             self.ui.labelPage.setText(f'Page 1 of 1')
             self.handle_nextprev_buttons()
         elif node_id == 'folder':
-            self.setWindowTitle(f'{self.version_str}')
+            self.setWindowTitle(f'{self.version_str} - {self.db_filename}')
             curr_node = self.ui.treeMain.findItems(node_title, Qt.MatchContains, 0)[0]
             curr_state = curr_node.isExpanded()
             curr_node.setExpanded(not curr_state)
         else:
             #logging.debug(f'Tree clicked - {node_title} selected with ID {node_id}.')
             self.anchor_id = 0
-            self.setWindowTitle(f'{self.version_str} - {node_title}')
+            self.setWindowTitle(f'{self.version_str} - {self.db_filename} - {node_title}')
             self.db_job('get_feed_posts', node_id)
             # mark as read - change font, remove icon and unread count, and update DB
             self.feeds[node_id].last_read = datetime.now(timezone.utc).isoformat('T', 'seconds')
@@ -636,9 +636,13 @@ class ReaderUI(QMainWindow):
         sqlitelib.vacuum(self.db_conn)
 
     def mark_older(self):
-        sqlitelib.mark_old_as_read(3, self.db_curs, self.db_conn)
+        self.db_job('mark_older_read', 3)
         self.update_feeds_unread_counts()
         self.setup_tree()
+
+    def delete_older_posts(self):
+        print('Deleted older posts.')
+        sqlitelib.mass_delete_all_but_last_n(100, self.db_curs, self.db_conn)
 
     def find_in_page(self, srchtext=None):
         #file_menu.addAction('&Find...', self.search_toolbar.show, shortcut=QKeySequence.Find)
