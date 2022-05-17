@@ -63,29 +63,35 @@ class Worker(QRunnable):
         except Exception as err:
             logging.error(f"Failed to read feed {feed.title} - {err}")
         else:
-            if hasattr(parsedfeed, "status"):
-                if parsedfeed.status == 304:
-                    logging.info(f"{self.feednum}/{self.max_q_size}: Skipping {feed.id} "
-                                 f"as it is unchanged.")
-                elif str(parsedfeed.status)[0] in ["4", "5"]:
-                    logging.error(f"Error retrieving feed {feed.title} - "
-                                  f"error code was {parsedfeed.status}")
-                else:
-                    # update last modified time and etag, both locally and in DB
-                    self.update_lastmod_etag(parsedfeed, feed)
+            if self.check_return_status_ok(parsedfeed, feed):
+                # update last modified time and etag, both locally and in DB
+                self.update_lastmod_etag(parsedfeed, feed)
 
-                    if parsedfeed.entries:
-                        for p in parsedfeed.entries:
-                            newpost = rsslib.parse_post(feed, p)
-                            if newpost:
-                                newpost.strip_image_tags()
-                                postlist.append(newpost)
-                    if postlist:
-                        unread_count = sum([1 for p in postlist
-                                            if p.date > self.feeds[feed.id].last_read])
-                        self.db_queue.put(dbhandler.DBJob("write_post_list", postlist))
+                if parsedfeed.entries:
+                    for p in parsedfeed.entries:
+                        newpost = rsslib.parse_post(feed, p)
+                        if newpost:
+                            newpost.strip_image_tags()
+                            postlist.append(newpost)
+                if postlist:
+                    unread_count = sum([1 for p in postlist
+                                        if p.date > self.feeds[feed.id].last_read])
+                    self.db_queue.put(dbhandler.DBJob("write_post_list", postlist))
         finally:
             self.signals.finished.emit((unread_count, feed.id))
+
+    def check_return_status_ok(self, parsedfeed, feed):
+        if hasattr(parsedfeed, "status"):
+            if parsedfeed.status == 304:
+                logging.info(f"{self.feednum}/{self.max_q_size}: Skipping {feed.id} "
+                             f"as it is unchanged.")
+            elif str(parsedfeed.status)[0] in ["4", "5"]:
+                logging.error(f"Error retrieving feed {feed.title} - "
+                                  f"error code was {parsedfeed.status}")
+            else: # this accepts any other 2-- and 3-- values, needed because
+                  # some feeds return 3-- codes along with a valid feed. Be nice to
+                  # handle 301 permanent redirects properly in future.
+                return True
 
     def update_lastmod_etag(self, parsedfeed, feed):
         lastmod = (parsedfeed.modified if hasattr(parsedfeed, "modified")

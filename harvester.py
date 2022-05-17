@@ -722,7 +722,7 @@ class ReaderUI(QMainWindow):
             newfeed = newsubform.get_inputs()
             self.ui.statusbar.showMessage(f'Adding new subscription: {newfeed.title} - '
                                           f'{newfeed.rss_url} to folder {newfeed.folder}')
-            sqlitelib.write_feed(newfeed, self.db_curs, self.db_conn)
+            self.db_job('write_feed', newfeed)
             self.load_feed_data()
             self.setup_tree()
             self.update_queued_feeds([newfeed], True, True)

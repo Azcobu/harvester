@@ -18,7 +18,8 @@ def db():
     test_db = DB_Data(*sqlitelib.create_DB(":memory:"))
     newfeed = rsslib.Feed("http://new-sun.gov", "New Sun", "Main Folder",
                           "rss", "http://new-sun.gov/rss", "http://new-sun.gov",
-                          None, "1970-01-01T00:00:00+00:00", None)
+                          None, "1970-01-01T00:00:00+00:00", '0',
+                          "Thu, 1 Jan 1970 00:00:00 GMT", None)
     sqlitelib.write_feed(newfeed, test_db.curs, test_db.conn)
     postdate = f"{date.today().year}-01-01"
     newpost = rsslib.Post(1, "http://new-sun.gov", "Chapter 1 - Resurrection and Death",
