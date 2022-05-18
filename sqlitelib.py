@@ -14,7 +14,6 @@ def connect_DB_file(db_file):
     if not db_file or not path.exists(db_file):
         logging.error(f'DB file {db_file} could not be found.')
         return None
-
     try:
         conn = sqlite3.connect(db_file)
     except Exception as err:
@@ -279,16 +278,13 @@ def convert_results_to_postlist(results):
     return postlist
 
 def retrieve_feedlist(curs=None, conn=None):
-    feedlist = []
-
-    curs.execute('SELECT * FROM "feeds"')
-    for f in curs.fetchall():
-        try:
-            newfeed = rsslib.Feed(*f)
-        except Exception as err:
-            logging.error('Error loading feeds from DB - {err}')
-        feedlist.append(newfeed)
-    return feedlist
+    try:
+        curs.execute('SELECT * FROM "feeds"')
+        feeds = curs.fetchall()
+        if feeds:
+            return [rsslib.Feed(*f) for f in feeds]
+    except Exception as err:
+        logging.error(f'Error loading feeds from DB - {err}')
 
 def delete_feed(feed_id, curs=None, conn=None):
     if not curs:
@@ -417,9 +413,9 @@ def set_sqlite_pragmas(curs, conn):
     curs.execute('PRAGMA auto_vacuum = 1')
 
 def main():
-    dbfile = 'd:\\test4.db'
+    dbfile = '/home/blw/harvtest.db'
     #dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
-    #curs, conn = connect_DB_file(dbfile)
+    curs, conn = connect_DB_file(dbfile)
     #get_data(curs, conn)
     '''
     newpost = rsslib.Post(2, "http://new-sun.gov", "Chapter 1 - On Symbols",
@@ -448,7 +444,9 @@ def main():
     #print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
     #print(list_feeds_over_post_count(0, curs, conn))
-    mark_old_as_read(3, 2, 2)
+    k = retrieve_feedlist(curs, conn)
+    print(k)
+
 
 if __name__ == '__main__':
     main()

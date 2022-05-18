@@ -65,6 +65,7 @@ class ReaderUI(QMainWindow):
     last_read = {}
     redd_dir = ''
     first_run_mode = True
+    folderlist = []
     db_q = Queue()
     test_data = 'a'
 
@@ -394,7 +395,8 @@ class ReaderUI(QMainWindow):
             db_filename = self.locate_db()
         logging.info(f'Loading DB file {db_filename}')
         db = sqlitelib.connect_DB_file(db_filename)
-        while not db:
+        #db_ok = sqlitelib.retrieve_feedlist(db[0], db[1])
+        while not db: # or not db_ok:
             logging.error(f'Attempt to load DB file {db_filename} failed.')
             self.db_filename = None
             db_filename = self.locate_db()
@@ -439,12 +441,13 @@ class ReaderUI(QMainWindow):
     def load_feed_data(self):
         self.feeds = {}
         feeds = rsslib.import_feeds_from_db(self.db_curs, self.db_conn)
-        for f in feeds:
-            self.feeds[f.id] = f
+        if feeds:
+            for f in feeds:
+                self.feeds[f.id] = f
 
-        # find all folders
-        self.folderlist = set([x.folder for x in feeds if x.folder not in [None, '', 'None']])
-        self.folderlist = sorted(self.folderlist)
+            # find all folders
+            self.folderlist = set([x.folder for x in feeds if x.folder not in [None, '', 'None']])
+            self.folderlist = sorted(self.folderlist)
 
         self.update_feeds_unread_counts()
 
@@ -1164,6 +1167,9 @@ def exception_hook(exctype, value, traceback):
     sys.exit(1)
 
 def main():
+    pass
+
+if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     # set stylesheet
@@ -1177,6 +1183,3 @@ def main():
 
     Reader = ReaderUI()
     sys.exit(app.exec_())
-
-if __name__ == '__main__':
-    main()

@@ -229,7 +229,10 @@ def import_opml_to_db(opmlfile, feeds_dict, db_curs, db_conn):
 
 def import_feeds_from_db(db_curs, db_file):
     feedlist = sqlitelib.retrieve_feedlist(db_curs, db_file)
-    return sorted(feedlist, key=lambda x:x.title.capitalize())
+    if feedlist:
+        return sorted(feedlist, key=lambda x:x.title.capitalize())
+    else:
+        return None
 
 def export_feeds_to_opml(feedlist):
     pass
