@@ -367,7 +367,6 @@ def main():
     #retrieve_feeds(feedlist)
     #save_error_log(errorlog)
     #export_opml_to_db('d:\\tmp\\blw10.opml', db_file)
-    k = retrieve_feed('http://tobolds.blogspot.com/feeds/posts/default', 1, 1)
 
 if __name__ == '__main__':
     main()

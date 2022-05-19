@@ -127,7 +127,7 @@ def test_delete_feed(db):
                           "rss", "http://new-sun.gov/rss", "http://new-sun.gov",
                           None, 0, None)
     sqlitelib.delete_feed(delfeed.id, db.curs, db.conn)
-    assert len(sqlitelib.retrieve_feedlist(db.curs, db.conn)) == 0
+    assert sqlitelib.retrieve_feedlist(db.curs, db.conn) == None
     assert sqlitelib.count_all_unread(db.curs, db.conn) == {}
 
 def test_delete_all_but_last_n(db):

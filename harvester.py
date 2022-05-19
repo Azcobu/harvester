@@ -691,7 +691,8 @@ class ReaderUI(QMainWindow):
             q.put(feed)
         return q
 
-    def update_queued_feeds(self, specified_feeds=None, dl_feeds=True, dl_icons=False):
+    def update_queued_feeds(self, specified_feeds=None, dl_feeds=True, dl_icons=False,
+                            dl_imgs=False):
         if not is_internet_on():
             self.ui.statusbar.showMessage(f'Not connected to the Internet.')
             return
@@ -745,7 +746,7 @@ class ReaderUI(QMainWindow):
                 msg = f'Imported {new} new feeds'
                 add = '.' if not dupes else f' and skipped {dupes} duplicates.'
                 self.ui.statusbar.showMessage(msg + add)
-                self.update_queued_feeds(None, True, True)
+                self.update_queued_feeds(None, True)
             else:
                 self.ui.statusbar.showMessage(f'Feed import failed.')
 
@@ -792,7 +793,7 @@ class ReaderUI(QMainWindow):
             feed = self.feeds[node_id]
         logging.debug(f'Updating {feed.title}')
         self.ui.statusbar.showMessage(f'Updating {feed.title}')
-        self.update_queued_feeds([feed], True, True)
+        self.update_queued_feeds([feed], True, True, True)
         # QQQQ should update current page
 
     def search_feeds(self):

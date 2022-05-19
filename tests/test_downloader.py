@@ -25,18 +25,20 @@ def parsedfeed():
     m.configure_mock(status=200)
     return m
 
-def test_create_worker(worker, feed):
-    assert isinstance(worker, downloader.Worker)
-
-def test_status_returns(worker, parsedfeed, feed):
-    assert parsedfeed.status == 200
-    assert worker.check_return_status_ok(parsedfeed, feed) == True
+def test_create_worker(feed):
+    q, db_q = Queue(), Queue()
+    q.put(feed)
+    w = downloader.Worker(10, 0, q, db_q, {feed.id:feed}, True, True)
+    assert isinstance(w, downloader.Worker)
 
 @pytest.mark.parametrize("status, expected", [(200, True), (304, None), (404, None)])
 def test_more_status_returns(worker, feed, status, expected):
     m = Mock()
     m.configure_mock(status=status)
     assert worker.check_return_status_ok(m, feed) == expected
+    # test no status provided
+    assert worker.check_return_status_ok('string without status attribute', feed) == None
+
 
 '''
 @patch('feedparser.parse')
