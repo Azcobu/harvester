@@ -23,7 +23,7 @@ from dateutil.parser import *
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
-                          pyqtSlot, QThread, QThreadPool)
+                          pyqtSlot, QThread, QThreadPool, QUrl)
 from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap
 from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
     QTreeWidgetItem, QMenu, QAction, QDialog, QLineEdit, QLabel, QMessageBox,
@@ -498,7 +498,9 @@ class ReaderUI(QMainWindow):
             foldernode = QTreeWidgetItem(self.ui.treeMain, [f, 'folder'])
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
-            for feed in [v for v in self.feeds.values() if v.folder == f]:
+            folderfeeds = sorted([v for v in self.feeds.values() if v.folder == f],\
+                                  key=lambda x:x.title.lower())
+            for feed in folderfeeds:
                 newnode = QTreeWidgetItem(foldernode)
                 self.feeds[feed.id].treenode = newnode
                 self.format_feed_tree_node(newnode, feed.id)
@@ -514,7 +516,7 @@ class ReaderUI(QMainWindow):
             foldernode = QTreeWidgetItem(self.ui.treeMain, ['ReddFiles', 'folder'])
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-reddit-100-2.png'))
-            reddfiles = sorted(listdir(self.redd_dir), key = lambda x:x.lower())
+            reddfiles = sorted(listdir(self.redd_dir), key=lambda x:x.lower())
             for rf in reddfiles:
                 newnode = QTreeWidgetItem(foldernode, [f'{rf}', 'reddfile'])
                 newnode.setFont(0, QFont("Segoe UI", 10))
@@ -612,7 +614,7 @@ class ReaderUI(QMainWindow):
     def display_post_data(self, results):
         self.results = results
         posthtml = self.generate_posts_page(results)
-        self.ui.webEngine.setHtml(posthtml)
+        self.ui.webEngine.setHtml(posthtml, QUrl("file://"))
 
     def collapse_other_folders(self, curr_node):
         root = self.ui.treeMain.invisibleRootItem()
@@ -632,7 +634,7 @@ class ReaderUI(QMainWindow):
         if not startposts:
             self.results = []
         posthtml = self.generate_posts_page(startposts)
-        self.ui.webEngine.setHtml(posthtml)
+        self.ui.webEngine.setHtml(posthtml, QUrl("file://"))
 
     def maintain_DB(self):
         self.ui.statusbar.showMessage('Running DB maintenance.')
@@ -727,7 +729,7 @@ class ReaderUI(QMainWindow):
             self.ui.statusbar.showMessage(f'Adding new subscription: {newfeed.title} - '
                                           f'{newfeed.rss_url} to folder {newfeed.folder}')
             self.db_job('write_feed', newfeed)
-            self.load_feed_data()
+            self.feeds[newfeed.id] = newfeed
             self.setup_tree()
             self.update_queued_feeds([newfeed], True, True)
 
@@ -806,7 +808,7 @@ class ReaderUI(QMainWindow):
             if results:
                 self.ui.statusbar.showMessage(f'{len(results)} results found.')
                 posthtml = self.generate_posts_page(results)
-                self.ui.webEngine.setHtml(posthtml)
+                self.ui.webEngine.setHtml(posthtml, QUrl("file://"))
             else:
                 self.ui.statusbar.showMessage(f'No results found for search "{self.srchtext}"')
 
@@ -825,7 +827,7 @@ class ReaderUI(QMainWindow):
                 if results:
                     self.ui.statusbar.showMessage(f'{len(results)} results found.')
                     posthtml = self.generate_posts_page(results)
-                    self.ui.webEngine.setHtml(posthtml)
+                    self.ui.webEngine.setHtml(posthtml, QUrl("file://"))
                 else:
                     self.ui.statusbar.showMessage(f'No results found for search '
                                                   f'"{self.srchtext}"')
@@ -889,6 +891,9 @@ class ReaderUI(QMainWindow):
         self.ui.labelPage.setFont(QFont("Segoe UI", 10, weight=QFont.Bold))
         self.ui.labelPage.setText(f'Page {self.curr_page} of {self.max_page}')
 
+        # QQQQ should edit post.contents to strip image data if img_loading is
+        # disabled - older posts may have had it enabled
+
         if results:
             for post in results:
                 convdate = convert_isodate_to_fulldate(post.date)
@@ -916,7 +921,7 @@ class ReaderUI(QMainWindow):
             self.curr_page += 1
             self.ui.buttonPrevPage.setDisabled(False)
             posthtml = self.generate_posts_page()
-            self.ui.webEngine.setHtml(posthtml)
+            self.ui.webEngine.setHtml(posthtml, QUrl("file://"))
         if self.curr_page == self.max_page:
             self.ui.buttonNextPage.setDisabled(True)
 
@@ -925,7 +930,7 @@ class ReaderUI(QMainWindow):
             self.curr_page -= 1
             self.ui.buttonNextPage.setDisabled(False)
             posthtml = self.generate_posts_page()
-            self.ui.webEngine.setHtml(posthtml)
+            self.ui.webEngine.setHtml(posthtml, QUrl("file://"))
         if self.curr_page == 1:
             self.ui.buttonPrevPage.setDisabled(True)
 

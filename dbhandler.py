@@ -58,7 +58,7 @@ class DBHandler(QObject):
             elif op.name == 'mark_older_read':
                 sqlitelib.mark_old_as_read(op.params[0], db_curs, db_conn)
             elif op.name == 'write_feed':
-                sqlitelib.write_feed(newfeed, db_curs, db_conn)
+                sqlitelib.write_feed(op.params[0], db_curs, db_conn)
             elif op.name == 'SHUTDOWN':
                 self.running = False
                 db_conn.commit()
