@@ -66,6 +66,8 @@ def create_DB(filename):
         return False
 
 def calc_limit_date(instr):
+    if 'Last ' in instr:
+        instr = instr[5:].lower()
     timediffs = {'day':1, 'week':7, 'month':31, 'year':365}
     if instr in timediffs.keys():
         return timediffs[instr]
@@ -413,7 +415,7 @@ def set_sqlite_pragmas(curs, conn):
     curs.execute('PRAGMA auto_vacuum = 1')
 
 def main():
-    dbfile = '/home/blw/harvtest.db'
+    dbfile = 'd:\\tmp\\speedtest.db'
     #dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
     curs, conn = connect_DB_file(dbfile)
     #get_data(curs, conn)
@@ -440,12 +442,10 @@ def main():
     #k = find_date_all_feeds_last_read(curs, conn)
     #print(k)
     #print(usage_report(curs, conn))
-    #print(text_search('symbol', curs, conn, None, 'month'))  # kryl
+    #print(text_search('placeholder', curs, conn, None, 'week'))
     #print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
     #print(list_feeds_over_post_count(0, curs, conn))
-    k = retrieve_feedlist(curs, conn)
-    print(k)
 
 
 if __name__ == '__main__':
