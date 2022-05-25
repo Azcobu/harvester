@@ -85,7 +85,9 @@ class ReaderUI(QMainWindow):
         #self.ui.buttonNextPage.setIcon(QIcon(':/icons/icons/icons8-fast-forward-100.png'))
         self.ui.buttonNextPage.setStyleSheet(
             "border-image : url(:/icons/icons/icons8-fast-forward-100.png);")
+        self.ui.buttonNextPost = QPushButton('>')
         self.ui.labelPage = QLabel()
+        self.ui.buttonPrevPost = QPushButton('<')
         self.ui.buttonPrevPage = QPushButton('')
         #self.ui.buttonPrevPage.setIcon(QIcon(':/icons/icons/icons8-rewind-100.png'))
         self.ui.buttonPrevPage.setStyleSheet(
@@ -179,10 +181,14 @@ class ReaderUI(QMainWindow):
         #setup status bar
         self.ui.buttonPrevPage.setDisabled(True) #start with prev button disabled
         self.ui.statusbar.addPermanentWidget(self.ui.buttonPrevPage)
+        self.ui.statusbar.addPermanentWidget(self.ui.buttonPrevPost)
         self.ui.statusbar.addPermanentWidget(self.ui.labelPage)
+        self.ui.statusbar.addPermanentWidget(self.ui.buttonNextPost)
         self.ui.statusbar.addPermanentWidget(self.ui.buttonNextPage)
         self.ui.buttonNextPage.clicked.connect(self.next_page)
         self.ui.buttonPrevPage.clicked.connect(self.prev_page)
+        self.ui.buttonNextPost.clicked.connect(self.next_post)
+        self.ui.buttonPrevPost.clicked.connect(self.prev_post)
 
         self.dl_icon = QIcon(':/icons/icons/icons8-download-100.png')
         self.folder_icon = QIcon(':/icons/icons/icons8-folder-100.png')
@@ -902,7 +908,7 @@ class ReaderUI(QMainWindow):
                 page.append('<div class="post">'
                             f'<a id="anchor{anchor_id}" class="{isread}" '
                             f'href="{post.url}">{post.title}</a> '
-                            f' {anchortext} '
+                            f'{anchortext} '
                             f'<h5><i><a href="{post.feed_id}">{self.feeds[post.feed_id].title}</a> - '
                             f'{post.author} on {convdate}</i></h5>'
                             f'<p>{post.content}'
@@ -949,6 +955,24 @@ class ReaderUI(QMainWindow):
         else:
             self.ui.buttonPrevPage.setStyleSheet("border-image : "
                 "url(:/icons/icons/icons8-rewind-100.png);")
+
+    def next_post(self):
+        self.anchor_id += 1
+        logging.debug(f'Next -> Anchor is {self.anchor_id}')
+        if self.anchor_id % self.page_size == 0:
+            self.ui.buttonNextPage.click()
+        anchor_str = f'anchor{self.anchor_id}'
+        prev_js = f"document.getElementById('{anchor_str}').scrollIntoView();"
+        self.ui.webEngine.page().runJavaScript(prev_js)
+
+    def prev_post(self):
+        self.anchor_id = max(0, self.anchor_id - 1)
+        logging.debug(f'Prev -> Anchor is {self.anchor_id}')
+        if self.anchor_id % self.page_size == self.page_size - 1:
+            self.ui.buttonPrevPage.click()
+        anchor_str = f'anchor{self.anchor_id - 1}'
+        prev_js = f"document.getElementById('{anchor_str}').scrollIntoView();"
+        self.ui.webEngine.page().runJavaScript(prev_js)
 
     def new_folder(self):
         newfolder, ok = QInputDialog.getText(self, 'New Folder Name', 'Enter folder name:')
