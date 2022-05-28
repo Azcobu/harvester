@@ -27,7 +27,8 @@ from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
 from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap
 from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
     QTreeWidgetItem, QMenu, QAction, QDialog, QLineEdit, QLabel, QMessageBox,
-    QInputDialog, QWidget, QToolBar, QHBoxLayout, QShortcut, QCheckBox, QFileDialog)
+    QInputDialog, QWidget, QToolBar, QHBoxLayout, QShortcut, QCheckBox, QFileDialog,
+    QShortcut)
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from ui.harvester_main import Ui_MainWindow
 from ui.harvsearch import Ui_frmSearch
@@ -189,6 +190,10 @@ class ReaderUI(QMainWindow):
         self.ui.buttonPrevPage.clicked.connect(self.prev_page)
         self.ui.buttonNextPost.clicked.connect(self.next_post)
         self.ui.buttonPrevPost.clicked.connect(self.prev_post)
+        self.shortcut_next_post = QShortcut(QKeySequence('N'), self)
+        self.shortcut_next_post.activated.connect(self.next_post)
+        self.shortcut_prev_post = QShortcut(QKeySequence('B'), self)
+        self.shortcut_prev_post.activated.connect(self.prev_post)
 
         self.dl_icon = QIcon(':/icons/icons/icons8-download-100.png')
         self.folder_icon = QIcon(':/icons/icons/icons8-folder-100.png')
@@ -330,11 +335,10 @@ class ReaderUI(QMainWindow):
         self.ui.webEngine.setZoomFactor(self.web_zoom)
 
         if self.anchor_id > 0:
-            anchor_str = f'anchor{self.anchor_id}'
-            prev_js = f"document.getElementById('{anchor_str}').scrollIntoView();"
+            self.jump_to_current_anchor()
         else: # new feed, so just jump to top
             prev_js = 'window.scroll(0, 0)'
-        self.ui.webEngine.page().runJavaScript(prev_js)
+            self.ui.webEngine.page().runJavaScript(prev_js)
 
     def increase_text_size(self):
         self.web_zoom += 0.05
@@ -961,18 +965,19 @@ class ReaderUI(QMainWindow):
         logging.debug(f'Next -> Anchor is {self.anchor_id}')
         if self.anchor_id % self.page_size == 0:
             self.ui.buttonNextPage.click()
-        anchor_str = f'anchor{self.anchor_id}'
-        prev_js = f"document.getElementById('{anchor_str}').scrollIntoView();"
-        self.ui.webEngine.page().runJavaScript(prev_js)
+        self.jump_to_current_anchor()
 
     def prev_post(self):
         self.anchor_id = max(0, self.anchor_id - 1)
         logging.debug(f'Prev -> Anchor is {self.anchor_id}')
         if self.anchor_id % self.page_size == self.page_size - 1:
             self.ui.buttonPrevPage.click()
-        anchor_str = f'anchor{self.anchor_id - 1}'
-        prev_js = f"document.getElementById('{anchor_str}').scrollIntoView();"
-        self.ui.webEngine.page().runJavaScript(prev_js)
+        self.jump_to_current_anchor()
+
+    def jump_to_current_anchor(self):
+        anchor_str = f'anchor{self.anchor_id}'
+        js = f"document.getElementById('{anchor_str}').scrollIntoView();"
+        self.ui.webEngine.page().runJavaScript(js)
 
     def new_folder(self):
         newfolder, ok = QInputDialog.getText(self, 'New Folder Name', 'Enter folder name:')

@@ -1,7 +1,6 @@
 # RSS-lib
 #handles backend RSS stuff like retrieving and parsing feeds and posts
 
-import threading
 import logging
 from queue import Queue
 import feedparser
