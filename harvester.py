@@ -623,6 +623,7 @@ class ReaderUI(QMainWindow):
             self.feeds[node_id].unread = 0
             self.db_job('mark_feed_read', node_id)
             self.format_feed_tree_node(self.ui.treeMain.currentItem(), node_id)
+            self.jump_to_current_anchor()
 
     def display_post_data(self, results):
         self.results = results
