@@ -23,7 +23,7 @@ from dateutil.parser import *
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
-                          pyqtSlot, QThread, QThreadPool, QUrl)
+                          pyqtSlot, QThread, QThreadPool, QUrl, QTimer)
 from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap
 from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
     QTreeWidgetItem, QMenu, QAction, QDialog, QLineEdit, QLabel, QMessageBox,
@@ -69,6 +69,7 @@ class ReaderUI(QMainWindow):
     folderlist = []
     db_q = Queue()
     test_data = 'a'
+    auto_update_interval = 1800 # in seconds
 
     def __init__(self):
         super(ReaderUI, self).__init__()
@@ -204,6 +205,13 @@ class ReaderUI(QMainWindow):
         self.ui.webEngine.loadFinished.connect(self.finalize_page)
         self.ui.webEngine.setZoomFactor(self.web_zoom)
 
+        #timer setup
+        if self.auto_update_interval:
+            self.timer = QTimer()
+            self.timer.setInterval(self.auto_update_interval * 1000)
+            self.timer.timeout.connect(lambda: self.update_queued_feeds(None, True, False))
+            self.timer.start()
+
     def init_data(self):
         self.load_db_file(self.db_filename)
         self.load_feed_data()
@@ -333,12 +341,7 @@ class ReaderUI(QMainWindow):
                           f'{self.web_zoom}. Setting to default of 125%.')
             self.web_zoom = 1.25
         self.ui.webEngine.setZoomFactor(self.web_zoom)
-
-        if self.anchor_id > 0:
-            self.jump_to_current_anchor()
-        else: # new feed, so just jump to top
-            prev_js = 'window.scroll(0, 0)'
-            self.ui.webEngine.page().runJavaScript(prev_js)
+        self.jump_to_current_anchor()
 
     def increase_text_size(self):
         self.web_zoom += 0.05
@@ -724,6 +727,8 @@ class ReaderUI(QMainWindow):
             worker.signals.icondata.connect(self.update_feed_icon)
             self.threadpool.start(worker)
 
+        self.timer.setInterval(self.auto_update_interval * 1000)
+
         '''
         DB_thread = threading.Thread(target=rsslib.DB_writer, args=[self.db_q,
                                      self.threadpool.maxThreadCount(),
@@ -975,8 +980,11 @@ class ReaderUI(QMainWindow):
         self.jump_to_current_anchor()
 
     def jump_to_current_anchor(self):
-        anchor_str = f'anchor{self.anchor_id}'
-        js = f"document.getElementById('{anchor_str}').scrollIntoView();"
+        if self.anchor_id > 0:
+            anchor_str = f'anchor{self.anchor_id}'
+            js = f"document.getElementById('{anchor_str}').scrollIntoView();"
+        else:
+            js = 'window.scroll(0, 0)'
         self.ui.webEngine.page().runJavaScript(js)
 
     def new_folder(self):
