@@ -938,6 +938,9 @@ class ReaderUI(QMainWindow):
             self.ui.buttonPrevPage.setDisabled(False)
             posthtml = self.generate_posts_page()
             self.ui.webEngine.setHtml(posthtml, QUrl("file://"))
+            self.anchor_id = (self.curr_page - 1) * self.page_size
+            self.jump_to_current_anchor()
+            logging.debug(f'Anchor is now {self.anchor_id}')
         if self.curr_page == self.max_page:
             self.ui.buttonNextPage.setDisabled(True)
 
@@ -947,6 +950,9 @@ class ReaderUI(QMainWindow):
             self.ui.buttonNextPage.setDisabled(False)
             posthtml = self.generate_posts_page()
             self.ui.webEngine.setHtml(posthtml, QUrl("file://"))
+            if self.anchor_id % self.page_size != self.page_size - 1:
+                self.anchor_id = (self.curr_page - 1) * self.page_size
+            logging.debug(f'Anchor is now {self.anchor_id}')
         if self.curr_page == 1:
             self.ui.buttonPrevPage.setDisabled(True)
 
