@@ -355,7 +355,7 @@ def validate_feed(feed_url):
 def main():
     pass
     db_file = 'd:\\tmp\\posts.db'
-    #curs, conn = sqlitelib.connect_DB_file(db_file)
+    curs, conn = sqlitelib.connect_DB_file(db_file)
     #https://apod.nasa.gov/apod.rss
     #print(validate_feed('https://apod.nasa.gov/apod.rss'))
     #invfull = 'http://bhagpuss.blogspot.com/feeds/posts/default'
@@ -366,6 +366,7 @@ def main():
     #retrieve_feeds(feedlist)
     #save_error_log(errorlog)
     #export_opml_to_db('d:\\tmp\\blw10.opml', db_file)
+    import_opml_to_db(f'K:\Dropbox\Python\latest.opml', {}, curs, conn)
 
 if __name__ == '__main__':
     main()

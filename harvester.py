@@ -764,7 +764,7 @@ class ReaderUI(QMainWindow):
                 msg = f'Imported {new} new feeds'
                 add = '.' if not dupes else f' and skipped {dupes} duplicates.'
                 self.ui.statusbar.showMessage(msg + add)
-                self.update_queued_feeds(None, True)
+                self.update_queued_feeds(None, True, True)
             else:
                 self.ui.statusbar.showMessage(f'Feed import failed.')
 
