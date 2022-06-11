@@ -238,7 +238,7 @@ class ReaderUI(QMainWindow):
         self.db_q.put(dbhandler.DBJob(cmd, params))
 
     def link_hover(self, url):
-        if 'data:text/html;' in url:
+        if '#anchor' in url:
             self.ui.statusbar.showMessage(f'Jump to next/previous post.')
         else:
             self.ui.statusbar.showMessage(f'{url}')
@@ -248,11 +248,12 @@ class ReaderUI(QMainWindow):
         if '#anchor' in url_str:
             a, b, anchor_id = url_str.rpartition('#anchor')
             anchor_id = int(anchor_id.split("')")[0])
+            self.anchor_id = anchor_id
+            logging.debug(f'Url change -> Anchor is {self.anchor_id}')
 
             anchor_target_page = anchor_id // self.page_size + 1
             if anchor_target_page < self.curr_page: # go back
                 self.ui.buttonPrevPage.click()
-                self.anchor_id = anchor_id
                 self.finalize_page()
 
             elif anchor_target_page > self.curr_page: # go forwards
@@ -649,6 +650,8 @@ class ReaderUI(QMainWindow):
             self.results = []
         posthtml = self.generate_posts_page(startposts)
         self.ui.webEngine.setHtml(posthtml, QUrl("file://"))
+        self.anchor_id = 0
+        self.jump_to_current_anchor()
 
     def maintain_DB(self):
         self.ui.statusbar.showMessage('Running DB maintenance.')
