@@ -1,6 +1,6 @@
 favicon==0.7.0
 feedparser==6.0.10
-lxml==4.5.0
+lxml==4.9.1
 opml==0.5
 PyQt5==5.15.7
 pytest==7.1.2
