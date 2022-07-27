@@ -1,0 +1,10 @@
+favicon==0.7.0
+feedparser==6.0.10
+lxml==4.5.0
+opml==0.5
+PyQt5==5.15.7
+pytest==7.1.2
+python_dateutil==2.8.2
+pytz==2019.3
+requests==2.22.0
+PyQtWebEngine==5.15.6
