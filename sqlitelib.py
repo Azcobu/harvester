@@ -66,6 +66,8 @@ def create_DB(filename):
         return False
 
 def calc_limit_date(instr):
+    if not instr:
+        return 99999
     if 'Last ' in instr:
         instr = instr[5:].lower()
     timediffs = {'day':1, 'week':7, 'month':31, 'year':365}
@@ -210,6 +212,16 @@ def count_filtered_unread(feed_str, curs=None, conn=None):
         return k
     except Exception as err:
         print(f'Error counting unread posts for feeds - {err}')
+
+def count_feed_unread(feed_id, curs=None, conn=None):
+    try:
+        query = ("SELECT COUNT(*) FROM `posts` p "
+                f"WHERE p.feed_id = ? "
+                "AND p.flags = 'None' ")
+        curs.execute(query, (feed_id,))
+        return curs.fetchone()[0]
+    except Exception as err:
+        print(f'Error counting unread posts for feed - {err}')
 
 def get_most_recent(numposts, curs=None, conn=None):
     try:
@@ -415,7 +427,7 @@ def set_sqlite_pragmas(curs, conn):
     curs.execute('PRAGMA auto_vacuum = 1')
 
 def main():
-    dbfile = 'd:\\tmp\\speedtest.db'
+    dbfile = 'd:\\speed7.db'
     #dbfile = 'D:\\Python\\Code\\harvester\\tests\\test.db'
     curs, conn = connect_DB_file(dbfile)
     #get_data(curs, conn)
@@ -446,7 +458,6 @@ def main():
     #print(find_inactive_feeds(2021, curs, conn))
     #mass_delete_all_but_last_n(100, curs, conn)
     #print(list_feeds_over_post_count(0, curs, conn))
-
 
 if __name__ == '__main__':
     main()
