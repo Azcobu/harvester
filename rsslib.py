@@ -348,7 +348,7 @@ def validate_feed(feed_url):
               check_feed(urljoin(feed_url, '/feed/')) or\
               check_feed(urljoin(feed_url, '/rss/')) or\
               check_feed(urljoin(feed_url, '/feeds/posts/default/'))
-    if 'royalroad' in feed_url:
+    if 'royalroad' in feed_url and 'syndication' not in feed_url: 
         results = check_feed(royalroad_rss(feed_url))
     return results
 

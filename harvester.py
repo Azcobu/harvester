@@ -9,6 +9,8 @@
 # tools - report on, and delete all dead feeds. Dead culd be no posts at all, or
 # no posts in last X years.
 # delete folder and all feeds in it?
+# reload Reddit folder when opening the directory in the tree?
+# match whole word only?
 
 import sys
 import logging
@@ -68,7 +70,6 @@ class ReaderUI(QMainWindow):
     first_run_mode = True
     folderlist = []
     db_q = Queue()
-    test_data = 'a'
     auto_update_interval = 1800 # in seconds
 
     def __init__(self):
@@ -342,6 +343,8 @@ class ReaderUI(QMainWindow):
                           f'{self.web_zoom}. Setting to default of 125%.')
             self.web_zoom = 1.25
         self.ui.webEngine.setZoomFactor(self.web_zoom)
+        # QQQQ need to differentiate between ordinary internal nav, which
+        # needs anchor changes, and opening external pages, which also calls this.
         self.jump_to_current_anchor()
 
     def increase_text_size(self):
@@ -803,7 +806,7 @@ class ReaderUI(QMainWindow):
         opml.append('\t</body>\n</opml>')
 
         opml = ''.join(opml)
-        with open(fname, 'w') as outfile:
+        with open(fname, 'w', encoding='utf-8') as outfile:
             outfile.write(opml)
 
         self.ui.statusbar.showMessage(f'Feeds exported to file {fname}.')
@@ -855,7 +858,7 @@ class ReaderUI(QMainWindow):
 
     def update_reddit(self):
         # QQQQ should locate correct file
-        Popen(['python', r'D:\Python\Code\redditcrawl4.py'], shell=True)
+        Popen(['start', 'python', r'e:\Code\blw\redditcrawl4.py'], shell=True)
 
     def unsubscribe_feed(self):
         if self.node_id not in ['folder', 'reddfile']:

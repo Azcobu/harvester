@@ -86,6 +86,8 @@ class Worker(QRunnable):
                                 newpost.strip_image_tags()
                             postlist.append(newpost)
                 if postlist:
+                    # QQQQ this needs work
+                    #unread_count = self.feeds[feed.id].unread
                     unread_count = sum([1 for p in postlist
                                         if p.date > self.feeds[feed.id].last_read])
                     self.db_queue.put(dbhandler.DBJob("write_post_list", postlist))
