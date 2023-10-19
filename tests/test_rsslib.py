@@ -28,7 +28,7 @@ def test_post():
 
 @pytest.fixture
 def good_opml():
-    with open('valid.opml', 'r') as infile:
+    with open('tests\\valid.opml', 'r') as infile:
         return infile.read()
 
 @pytest.fixture
@@ -40,9 +40,9 @@ def rss_feed():
 def posts():
     """builds a list containing raw feed data strings"""
     postlist = []
-    postfiles = sorted([x for x in listdir('testdata') if 'example-post' in x])
+    postfiles = sorted([x for x in listdir('tests\\testdata') if 'example-post' in x])
     for pname in postfiles:
-        with open(path.join('testdata', pname), 'rb') as infile:
+        with open(path.join('tests\\testdata', pname), 'rb') as infile:
             postlist.append(pickle.load(infile))
     return postlist
 
@@ -50,9 +50,9 @@ def posts():
 def feeds():
     """builds a list containing raw feed data strings"""
     feedlist = []
-    feedfiles = sorted([x for x in listdir('testdata') if 'example-feed' in x])
+    feedfiles = sorted([x for x in listdir('tests\\testdata') if 'example-feed' in x])
     for fname in feedfiles:
-        with open(path.join('testdata', fname), 'rb') as infile:
+        with open(path.join('tests\\testdata', fname), 'rb') as infile:
             feedlist.append(pickle.load(infile))
     return feedlist
 
@@ -81,7 +81,7 @@ def test_post_strip_img_tags(test_post):
     assert imgstr not in test_post.content
 
 def test_opml_parse(good_opml):
-    f = rsslib.parse_opml('valid.opml')
+    f = rsslib.parse_opml('tests\\valid.opml')
     assert len(f) == 8
     assert set([x.folder for x in f if x.folder]) == set(['News', 'Archaeology'])
     assert sum([1 for x in f if x.folder == 'News']) == 3
