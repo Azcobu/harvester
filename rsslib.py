@@ -350,6 +350,9 @@ def validate_feed(feed_url):
               check_feed(urljoin(feed_url, '/feeds/posts/default/'))
     if 'royalroad' in feed_url and 'syndication' not in feed_url: 
         results = check_feed(royalroad_rss(feed_url))
+    if not results and 'https://' in feed_url: # feedparser fails sometimes on HTTPS but works fine with HTTP
+        feed_url = feed_url.replace('https://', 'http://')
+        results = validate_feed(feed_url)
     return results
 
 def main():
@@ -357,16 +360,17 @@ def main():
     db_file = 'd:\\tmp\\posts.db'
     curs, conn = sqlitelib.connect_DB_file(db_file)
     #https://apod.nasa.gov/apod.rss
-    #print(validate_feed('https://apod.nasa.gov/apod.rss'))
     #invfull = 'http://bhagpuss.blogspot.com/feeds/posts/default'
     #futclo = 'http://feeds.feedburner.com/FutilityCloset'
-    #post = check_feed(futclo)
+    #testfeed = 'https://axisofordinary.substack.com'
+    #post = validate_feed(testfeed)
+    #print(post)
     #feedlist = parse_opml('d:\\tmp\\aus-feeds.opml')
     #print(f'{len(feedlist)} feeds imported.')
     #retrieve_feeds(feedlist)
     #save_error_log(errorlog)
     #export_opml_to_db('d:\\tmp\\blw10.opml', db_file)
-    import_opml_to_db(f'K:\Dropbox\Python\latest.opml', {}, curs, conn)
+    #import_opml_to_db(f'K:\Dropbox\Python\latest.opml', {}, curs, conn)
 
 if __name__ == '__main__':
     main()
