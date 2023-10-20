@@ -1082,7 +1082,26 @@ class ReaderUI(QMainWindow):
             self.handle_nextprev_buttons()
 
     def view_feed_properties(self):
-        pass
+        if self.node_id not in ['folder', 'reddfile']:
+            node_id = self.ui.treeMain.currentItem().text(1)
+            feed = self.feeds[node_id]
+            props = QMessageBox(self)
+            props.setWindowTitle(f"Feed Properties")
+            props.setTextFormat(Qt.RichText)
+            pmap = QPixmap()
+            pmap.loadFromData(self.feeds[feed.id].favicon)
+            props.setIconPixmap(pmap)
+            props.setText(f'<h4><u>{feed.title}</u></h4>'
+                          '<p style="margin-bottom: -20px;">'
+                          '<ul style="margin-left: -30px; margin-top: -20px;">'
+                          f'<li>RSS URL: <a href="{feed.rss_url}" style="color: deepskyblue">{feed.rss_url}</a>'
+                          f'<li>Home Page: <a href="{feed.html_url}" style="color: deepskyblue">{feed.html_url}</a>'
+                          f'<li>Last Read: {feed.last_read}'
+                          '</ul>')
+            props.setStandardButtons(QMessageBox.Ok)
+            props.setDefaultButton(QMessageBox.Ok)
+            props.exec_()
+            props.deleteLater()
 
     def about_harv(self):
         #Information page for the program
