@@ -14,6 +14,7 @@
 
 import sys
 import logging
+import socket
 import urllib.request
 from functools import partial
 from os import listdir, path, getcwd, environ
@@ -1206,9 +1207,10 @@ class SearchPanel(QWidget):
 
 def is_internet_on():
     try:
-        response = urllib.request.urlopen('http://www.google.com', timeout=5)
+        socket.create_connection(("www.google.com", 80))
         return True
-    except urllib.error.URLError as err: pass
+    except OSError:
+        pass
     return False
 
 def convert_isodate_to_fulldate(isodate):
