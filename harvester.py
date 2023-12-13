@@ -1207,8 +1207,9 @@ class SearchPanel(QWidget):
 
 def is_internet_on():
     try:
-        socket.create_connection(("www.google.com", 80))
-        return True
+        socket.setdefaulttimeout(3)
+        with socket.create_connection(("www.google.com", 80)) as _:
+            return True
     except OSError:
         pass
     return False
