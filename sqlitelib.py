@@ -81,20 +81,29 @@ def text_search(srchtext, curs, conn, limit=None, datelimit=None, feed_id=None):
     if datelimit:
         datelimit = calc_limit_date(datelimit)
 
-    srchtext = f'%{srchtext}%'
+    srchtext = srchtext.strip()
+    srchwords = srchtext.split(' ')
 
-    query = f'SELECT * FROM posts WHERE `content` LIKE ? '
+    if len(srchwords) == 1:
+        srchtext = f'%{srchtext}%'
+        #query = f'SELECT * FROM posts WHERE `content` LIKE ? '
+        query = f'SELECT * FROM posts WHERE `content` LIKE "%{srchtext}%" '
+    else:
+        query = f'SELECT * FROM posts WHERE `content` LIKE "%{srchwords[0]}%" '
+        for word in srchwords[1:]:
+            query += f' AND `content` LIKE "%{word}%" '
 
     if feed_id:
         query += f'AND `feed_id` = "{feed_id}" '
 
     if datelimit:
         query += f'AND `date` >= date("now", "-{datelimit} day") '
-    query += f'ORDER BY `date` DESC'
+    query += 'ORDER BY `date` DESC'
     if limit and limit > 0:
         query += f' LIMIT {limit} '
     try:
-        curs.execute(query, (srchtext,))
+        #curs.execute(query, (srchtext,))
+        curs.execute(query)
     except Exception as err:
         logging.error(f'Error: {err}. Full query was {query}')
         return None
