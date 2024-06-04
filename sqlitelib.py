@@ -5,10 +5,10 @@
 # How to handle apostrophes, etc in text?
 
 import sqlite3
-import rsslib
 import logging
-from datetime import datetime, timezone, date, timedelta
 from os import path
+from datetime import datetime, timezone, date, timedelta
+import rsslib
 
 def connect_DB_file(db_file):
     if not db_file or not path.exists(db_file):
@@ -123,7 +123,7 @@ def write_post(post, curs=None, conn=None):
     # id, feed_id, title, author, url, date, content, flags
 
     if not curs:
-        curs, conn = connect_DB(filename)
+        logging.error('Attempt to write posts without loading a DB file first.')
 
     inpost = post.p_id, post.feed_id, post.title, post.author, post.url, post.date,\
              post.content, 'None'
@@ -149,15 +149,11 @@ def write_post_list(postlist, curs=None, conn=None):
                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?)", postssql)
         #conn.commit()
     except Exception as err:
-        logging.error('Error writing posts list - {err}. Postlist was {postlist}')
+        logging.error(f'Error writing posts list - {err}. Postlist was {postlist}')
 
 def write_feed(feed, curs=None, conn=None):
     if not curs:
         curs, conn = connect_DB(filename)
-
-    infeed = feed.id, feed.title, feed.folder, feed.f_type, feed.rss_url,\
-             feed.html_url, str(feed.tags), feed.last_read, feed.etag,\
-             feed.last_modified   #, feed.favicon
 
     curs.execute("INSERT OR IGNORE INTO feeds "\
                  "('id', 'title', 'folder','type', 'rss_url', 'html_url', 'tags',\
@@ -186,7 +182,7 @@ def write_feed_list(feedlist, curs=None, conn=None):
 
 def get_feed_posts(feed_id, curs=None, conn=None):
     try:
-        query = f'SELECT * FROM `posts` WHERE `feed_id` = ? ORDER BY `date` DESC;'
+        query = 'SELECT * FROM `posts` WHERE `feed_id` = ? ORDER BY `date` DESC;'
         curs.execute(query, (feed_id,))
         results = curs.fetchall()
         return convert_results_to_postlist(results)
@@ -215,7 +211,7 @@ def count_filtered_unread(feed_str, curs=None, conn=None):
     feed_str = f'%{feed_str}%'
     try:
         query = ("SELECT p.feed_id, COUNT(*) FROM `posts` p WHERE p.feed_id IN (SELECT f.id "
-	             f"FROM `feeds` f WHERE f.title LIKE ?) AND p.flags = 'None' GROUP BY p.feed_id;")
+	             "FROM `feeds` f WHERE f.title LIKE ?) AND p.flags = 'None' GROUP BY p.feed_id;")
         curs.execute(query, (feed_str,))
         k =  {x[0]:x[1] for x in curs.fetchall()}
         return k
@@ -225,8 +221,8 @@ def count_filtered_unread(feed_str, curs=None, conn=None):
 def count_feed_unread(feed_id, curs=None, conn=None):
     try:
         query = ("SELECT COUNT(*) FROM `posts` p "
-                f"WHERE p.feed_id = ? "
-                "AND p.flags = 'None' ")
+                 "WHERE p.feed_id = ? "
+                 "AND p.flags = 'None' ")
         curs.execute(query, (feed_id,))
         return curs.fetchone()[0]
     except Exception as err:
@@ -247,19 +243,19 @@ def vacuum(conn):
 
 def mark_old_as_read(numdays, curs=None, conn=None):
     timeoffset = (datetime.now(timezone.utc) - timedelta(days=numdays)).isoformat('T', 'seconds')
-    query = f'UPDATE `posts` SET `flags` = 1 WHERE `date` < ?'
+    query = 'UPDATE `posts` SET `flags` = 1 WHERE `date` < ?'
     # query = "SELECT * FROM `posts` WHERE `date` < date('now', '-3 day');"
     curs.execute(query, (timeoffset,))
-    query2 = (f'UPDATE `feeds` SET `last_read` = ? '
-              f'WHERE `last_read` < ?')
+    query2 = ('UPDATE `feeds` SET `last_read` = ? '
+              'WHERE `last_read` < ?')
     curs.execute(query2, (timeoffset, timeoffset))
     conn.commit()
 
 def mark_feed_read(feed_id, curs, conn):
-    query = f'UPDATE `posts` SET `flags` = 1 WHERE `feed_id` = ?;'
+    query = 'UPDATE `posts` SET `flags` = 1 WHERE `feed_id` = ?;'
     curs.execute(query, (feed_id,))
     timestamp = datetime.now(timezone.utc).isoformat('T', 'seconds')
-    query = f'UPDATE `feeds` SET `last_read` = ? WHERE `id` = ?;'
+    query = 'UPDATE `feeds` SET `last_read` = ? WHERE `id` = ?;'
     curs.execute(query, (timestamp, feed_id,))
     conn.commit()
     logging.info(f'Feed {feed_id} marked as read.')
@@ -284,7 +280,7 @@ def find_date_all_feeds_last_read(curs, conn):
 '''
 def find_date_all_feeds_last_read(curs, conn):
     #generate a dict of last read post for all feeds
-    query = f'SELECT id, last_read FROM `feeds`;'
+    query = 'SELECT id, last_read FROM `feeds`;'
     curs.execute(query)
     results = {x[0]:x[1] for x in curs.fetchall()}
     return results
@@ -314,9 +310,9 @@ def delete_feed(feed_id, curs=None, conn=None):
         curs, conn = connect_DB(filename)
 
     try:
-        delquery = f'DELETE FROM `posts` WHERE `feed_id` = ?'
+        delquery = 'DELETE FROM `posts` WHERE `feed_id` = ?'
         curs.execute(delquery, (feed_id,))
-        delquery = f'DELETE FROM `feeds` WHERE `id` = ?'
+        delquery = 'DELETE FROM `feeds` WHERE `id` = ?'
         curs.execute(delquery, (feed_id,))
         conn.commit()
     except Exception as err:
@@ -402,9 +398,9 @@ def update_feed_folder(feed_id, new_folder, curs, conn):
         except Exception as err:
             logging.error(f'Error changing folder for {feed_id} - {err}')
             return False
-        else:
-            logging.info(f'Changed folder for {feed_id} to {new_folder}.')
-            return True
+
+        logging.info(f'Changed folder for {feed_id} to {new_folder}.')
+        return True
     return False
 
 def update_favicon(feed_id, icon, curs, conn):
