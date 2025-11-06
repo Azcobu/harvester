@@ -534,7 +534,13 @@ class ReaderUI(QMainWindow):
             foldernode = QTreeWidgetItem(self.ui.treeMain, ['ReddFiles', 'folder'])
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-reddit-100-2.png'))
-            reddfiles = sorted(listdir(self.redd_dir), key=lambda x:x.lower())
+            
+            try:
+                reddfiles = sorted(listdir(self.redd_dir), key=lambda x:x.lower())
+            except FileNotFoundError:
+                reddfiles = []
+                logging.error(f'Unable to locate reddit directory from registry: {self.redd_dir}')
+
             for rf in reddfiles:
                 newnode = QTreeWidgetItem(foldernode, [f'{rf}', 'reddfile'])
                 newnode.setFont(0, QFont("Segoe UI", 10))
