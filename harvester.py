@@ -12,12 +12,16 @@
 # reload Reddit folder when opening the directory in the tree?
 # match whole word only?
 
+from os import listdir, path, getcwd, environ
+
+if environ.get("XDG_SESSION_TYPE") == "wayland":
+    environ["QT_QPA_PLATFORM"] = "xcb"
+
 import sys
 import logging
 import socket
 import urllib.request
 from functools import partial
-from os import listdir, path, getcwd, environ
 from datetime import datetime, timezone
 from queue import Queue
 from subprocess import Popen
