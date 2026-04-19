@@ -139,7 +139,8 @@ def parse_opml(infile):
 
 def parse_date(indate):
     try:
-        outdate = dateutil_parse(indate, tzinfos=_TZINFOS).astimezone(pytz.timezone("UTC")).isoformat()
+        cleaned = re.sub(r'([+-]\d{2}:\d{2})Z$', r'\1', indate)
+        outdate = dateutil_parse(cleaned, tzinfos=_TZINFOS).astimezone(pytz.timezone("UTC")).isoformat()
     except Exception as err:
         logging.error(f'Error parsing date {indate} - {err}')
         return indate
