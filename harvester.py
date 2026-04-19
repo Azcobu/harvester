@@ -22,7 +22,7 @@ import logging
 import socket
 import urllib.request
 from functools import partial
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from queue import Queue
 from subprocess import Popen
 from dateutil import tz
@@ -217,6 +217,7 @@ class ReaderUI(QMainWindow):
             self.timer.start()
 
     def init_data(self):
+        self._feed_errors = {}  # {feed_id: (error_count, retry_after_datetime)}
         self.load_db_file(self.db_filename)
         self.load_feed_data()
         self.locate_reddit_dir()
@@ -697,20 +698,34 @@ class ReaderUI(QMainWindow):
         self.ui.statusbar.showMessage(msg)
         self.update_tree_node_background(feed_id, 'downloading')
 
+    def node_error_update_ui(self, indata):
+        feed_id = indata[0]
+        count = self._feed_errors.get(feed_id, (0, None))[0] + 1
+        hours = min(2 ** (count - 1), 24)
+        retry_after = datetime.now(timezone.utc) + timedelta(hours=hours)
+        self._feed_errors[feed_id] = (count, retry_after)
+        logging.warning(f'Feed {feed_id} error #{count}, backing off for {hours}h')
+
     def node_finished_downloading_update_ui(self, indata):
         num_new, feed_id = indata
+        self._feed_errors.pop(feed_id, None)
         self.feeds[feed_id].unread = num_new
         self.format_feed_tree_node(self.feeds[feed_id].treenode, feed_id)
         self.update_tree_node_background(feed_id, 'finished')
 
     def generate_view_sorted_feed_queue(self):
         # generate queue in tree display order rather than alphabetically
+        now = datetime.now(timezone.utc)
         q = Queue()
         view_sort = sorted([x for x in self.feeds.values() if x.folder],
                     key = lambda x: (x.folder, x.title.lower()))
         view_sort += sorted([x for x in self.feeds.values() if not x.folder],
                     key = lambda x: x.title.lower())
         for feed in view_sort:
+            err = self._feed_errors.get(feed.id)
+            if err and now < err[1]:
+                logging.debug(f'Skipping {feed.id} — in backoff until {err[1].isoformat()}')
+                continue
             q.put(feed)
         return q
 
@@ -733,6 +748,7 @@ class ReaderUI(QMainWindow):
                                        db_filename=self.db_filename)
             worker.signals.started.connect(self.node_started_downloading_update_ui)
             worker.signals.finished.connect(self.node_finished_downloading_update_ui)
+            worker.signals.error.connect(self.node_error_update_ui)
             worker.signals.icondata.connect(self.update_feed_icon)
             self.threadpool.start(worker)
 

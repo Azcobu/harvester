@@ -71,6 +71,7 @@ class Worker(QRunnable):
 
     def dl_feed(self, feed, curs, conn):
         unread_count = 0
+        had_error = False
         postlist = []
         logging.info(f'DL starting for {feed.title}')
 
@@ -80,6 +81,7 @@ class Worker(QRunnable):
                                           modified=feed.last_modified)
         except Exception as err:
             logging.error(f"Failed to read feed {feed.title} - {err}")
+            had_error = True
         else:
             if self.check_return_status_ok(parsedfeed, feed):
                 if (getattr(parsedfeed, 'status', None) == 301
@@ -102,7 +104,11 @@ class Worker(QRunnable):
                 if postlist:
                     sqlitelib.write_post_list(postlist, curs, conn)
                     unread_count = sqlitelib.count_feed_unread(feed.id, curs, conn)
+            elif hasattr(parsedfeed, 'status') and str(parsedfeed.status)[0] in ('4', '5'):
+                had_error = True
         finally:
+            if had_error:
+                self.signals.error.emit((feed.id,))
             self.signals.finished.emit((unread_count, feed.id))
 
     def check_return_status_ok(self, parsedfeed, feed):
