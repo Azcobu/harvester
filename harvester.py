@@ -6,7 +6,7 @@
 # DB maintenance - if > 50 unread posts, start culling?
 # another report for out-of-date feeds might be handy.
 # add sample feeds from https://github.com/plenaryapp/awesome-rss-feeds
-# tools - report on, and delete all dead feeds. Dead culd be no posts at all, or
+# tools - report on, and delete all dead feeds. Dead could be no posts at all, or
 # no posts in last X years.
 # delete folder and all feeds in it?
 # reload Reddit folder when opening the directory in the tree?
@@ -504,11 +504,14 @@ class ReaderUI(QMainWindow):
         self.ui.treeMain.clear()
 
         for f in self.folderlist:
-            foldernode = QTreeWidgetItem(self.ui.treeMain, [f, 'folder'])
-            foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
-            foldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
-            folderfeeds = sorted([v for v in self.feeds.values() if v.folder == f],\
+            folderfeeds = sorted([v for v in self.feeds.values() if v.folder == f],
                                   key=lambda x:x.title.lower())
+            folder_unread = sum(feed.unread for feed in folderfeeds)
+            folder_label = f'{f} ({folder_unread})' if folder_unread else f
+            foldernode = QTreeWidgetItem(self.ui.treeMain, [folder_label, 'folder'])
+            weight = QFont.Bold if folder_unread else QFont.Normal
+            foldernode.setFont(0, QFont("Segoe UI", 10, weight=weight))
+            foldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
             for feed in folderfeeds:
                 newnode = QTreeWidgetItem(foldernode)
                 self.feeds[feed.id].treenode = newnode
