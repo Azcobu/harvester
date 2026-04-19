@@ -426,6 +426,14 @@ def update_favicon(feed_id, icon, curs, conn):
     except Exception as err:
         logging.error(f'Error changing icon for {feed_id} - {err}')
 
+def update_feed_rss_url(feed_id, new_url, curs, conn):
+    try:
+        curs.execute('UPDATE `feeds` SET `rss_url` = ? WHERE `id` = ?', (new_url, feed_id))
+        conn.commit()
+        logging.info(f'Updated RSS URL for {feed_id} to {new_url}')
+    except Exception as err:
+        logging.error(f'Error updating RSS URL for {feed_id} - {err}')
+
 def update_lastmod_etag(feed_id, last_mod, etag, curs, conn):
     query = 'UPDATE `feeds` SET `last_modified` = ?, `etag` = ? WHERE `id` = ?'
     try:

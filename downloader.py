@@ -82,6 +82,12 @@ class Worker(QRunnable):
             logging.error(f"Failed to read feed {feed.title} - {err}")
         else:
             if self.check_return_status_ok(parsedfeed, feed):
+                if (getattr(parsedfeed, 'status', None) == 301
+                        and getattr(parsedfeed, 'href', None)
+                        and parsedfeed.href != feed.rss_url):
+                    logging.info(f'Feed {feed.title} permanently moved to {parsedfeed.href}')
+                    self.feeds[feed.id].rss_url = parsedfeed.href
+                    sqlitelib.update_feed_rss_url(feed.id, parsedfeed.href, curs, conn)
                 self.update_lastmod_etag(parsedfeed, feed, curs, conn)
 
                 if parsedfeed.entries:
@@ -107,9 +113,7 @@ class Worker(QRunnable):
             elif str(parsedfeed.status)[0] in ["4", "5"]:
                 logging.error(f"Error retrieving feed {feed.title} - "
                                   f"error code was {parsedfeed.status}")
-            else: # this accepts any other 2-- and 3-- values, needed because
-                  # some feeds return 3-- codes along with a valid feed. Be nice to
-                  # handle 301 permanent redirects properly in future.
+            else: # accepts other 2xx/3xx — some feeds return 3xx with a valid body
                 return True
 
     def update_lastmod_etag(self, parsedfeed, feed, curs, conn):
