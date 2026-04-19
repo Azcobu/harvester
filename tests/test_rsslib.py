@@ -27,22 +27,13 @@ def test_post():
         "Also, img tags: <img src = 'empty.jpg'>", "None")
 
 @pytest.fixture
-def good_opml():
-    with open('tests\\valid.opml', 'r') as infile:
-        return infile.read()
-
-@pytest.fixture
-def rss_feed():
-    with open('rss-feed.txt', 'r') as infile:
-        return infile.read()
-
-@pytest.fixture
 def posts():
     """builds a list containing raw feed data strings"""
     postlist = []
-    postfiles = sorted([x for x in listdir('tests\\testdata') if 'example-post' in x])
+    testdata_dir = path.join('tests', 'testdata')
+    postfiles = sorted([x for x in listdir(testdata_dir) if 'example-post' in x])
     for pname in postfiles:
-        with open(path.join('tests\\testdata', pname), 'rb') as infile:
+        with open(path.join(testdata_dir, pname), 'rb') as infile:
             postlist.append(pickle.load(infile))
     return postlist
 
@@ -50,9 +41,10 @@ def posts():
 def feeds():
     """builds a list containing raw feed data strings"""
     feedlist = []
-    feedfiles = sorted([x for x in listdir('tests\\testdata') if 'example-feed' in x])
+    testdata_dir = path.join('tests', 'testdata')
+    feedfiles = sorted([x for x in listdir(testdata_dir) if 'example-feed' in x])
     for fname in feedfiles:
-        with open(path.join('tests\\testdata', fname), 'rb') as infile:
+        with open(path.join(testdata_dir, fname), 'rb') as infile:
             feedlist.append(pickle.load(infile))
     return feedlist
 
@@ -80,8 +72,8 @@ def test_post_strip_img_tags(test_post):
     test_post.strip_image_tags()
     assert imgstr not in test_post.content
 
-def test_opml_parse(good_opml):
-    f = rsslib.parse_opml('tests\\valid.opml')
+def test_opml_parse():
+    f = rsslib.parse_opml(path.join('tests', 'valid.opml'))
     assert len(f) == 8
     assert set([x.folder for x in f if x.folder]) == set(['News', 'Archaeology'])
     assert sum([1 for x in f if x.folder == 'News']) == 3
