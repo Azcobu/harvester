@@ -465,6 +465,19 @@ class ReaderUI(QMainWindow):
         for k, v in self.feeds.items():
             self.feeds[k].unread = unreads[k] if k in unreads else 0
 
+    def format_folder_node(self, feed_id):
+        folder = self.feeds[feed_id].folder
+        if not folder or folder in ('', 'None'):
+            return
+        parent_node = self.feeds[feed_id].treenode.parent()
+        if not parent_node:
+            return
+        folder_unread = sum(f.unread for f in self.feeds.values() if f.folder == folder)
+        label = f'{folder} ({folder_unread})' if folder_unread else folder
+        parent_node.setText(0, label)
+        weight = QFont.Bold if folder_unread else QFont.Normal
+        parent_node.setFont(0, QFont("Segoe UI", 10, weight=weight))
+
     def update_feed_icon(self, incdata):
         feed_id, icondata = incdata
         logging.debug(f'Updating icon for {feed_id}')
@@ -627,6 +640,7 @@ class ReaderUI(QMainWindow):
             self.feeds[node_id].unread = 0
             sqlitelib.mark_feed_read(node_id, self.db_curs, self.db_conn)
             self.format_feed_tree_node(self.ui.treeMain.currentItem(), node_id)
+            self.format_folder_node(node_id)
             self.jump_to_current_anchor()
 
     def display_post_data(self, results):
@@ -714,6 +728,7 @@ class ReaderUI(QMainWindow):
         self._feed_errors.pop(feed_id, None)
         self.feeds[feed_id].unread = num_new
         self.format_feed_tree_node(self.feeds[feed_id].treenode, feed_id)
+        self.format_folder_node(feed_id)
         self.update_tree_node_background(feed_id, 'finished')
 
     def generate_view_sorted_feed_queue(self):
