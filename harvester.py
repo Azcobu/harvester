@@ -553,7 +553,9 @@ class ReaderUI(QMainWindow):
                 newnode = QTreeWidgetItem(foldernode)
                 self.feeds[feed.id].treenode = newnode
                 self.format_feed_tree_node(newnode, feed.id)
+            self.ui.treeMain.blockSignals(True)
             foldernode.setExpanded(f in expanded_folders)
+            self.ui.treeMain.blockSignals(False)
 
         # add folderless feeds
         for feed in [v for v in self.feeds.values() if v.folder in [None, '', 'None']]:
@@ -573,7 +575,9 @@ class ReaderUI(QMainWindow):
                 reddfiles = []
                 logging.error(f'Unable to locate reddit directory from registry: {self.redd_dir}')
 
+            self.ui.treeMain.blockSignals(True)
             foldernode.setExpanded('ReddFiles' in expanded_folders)
+            self.ui.treeMain.blockSignals(False)
             for rf in reddfiles:
                 newnode = QTreeWidgetItem(foldernode, [f'{rf}', 'reddfile'])
                 newnode.setFont(0, _ui_font())
