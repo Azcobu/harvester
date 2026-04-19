@@ -82,8 +82,8 @@ class Post:
         return (f'Post: {self.title}')
 
     def strip_image_tags(self):
-        self.content = re.sub("(<img.*?>)", "",  self.content, 0,
-            re.IGNORECASE | re.DOTALL | re.MULTILINE)
+        self.content = re.sub("(<img.*?>)", "", self.content,
+            flags=re.IGNORECASE | re.DOTALL | re.MULTILINE)
 
 def open_opml_file(infile):
     try:
