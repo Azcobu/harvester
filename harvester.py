@@ -119,6 +119,7 @@ class ReaderUI(QMainWindow):
         self.init_data()
         self.init_threads()
         self.show()
+        self._restore_geometry()
 
     def initializeUI(self):
         self.ui.treeMain.setMouseTracking(True)
@@ -366,9 +367,6 @@ class ReaderUI(QMainWindow):
         settings = QSettings('Hypogeum', 'Harvester')
         if settings.allKeys() != []:
             self.first_run_mode = False
-            self.restoreGeometry(settings.value('geometry'))
-            self.restoreState(settings.value("windowState"))
-            self.ui.splitter.restoreState(settings.value("splitterSizes"))
             self.db_filename = settings.value('db_location')
             self.redd_dir = settings.value('redd_dir')
             zoom = settings.value('web_zoom')
@@ -377,6 +375,20 @@ class ReaderUI(QMainWindow):
             except (ValueError, TypeError):
                 self.web_zoom = 1.25
             self._saved_expanded_folders = set(settings.value("expanded_folders") or [])
+
+    def _restore_geometry(self):
+        settings = QSettings('Hypogeum', 'Harvester')
+        geometry = settings.value('geometry')
+        if geometry:
+            self.restoreGeometry(geometry)
+            if not QApplication.screenAt(self.frameGeometry().center()):
+                self.setGeometry(100, 100, 1280, 800)
+        window_state = settings.value('windowState')
+        if window_state:
+            self.restoreState(window_state)
+        splitter_state = settings.value('splitterSizes')
+        if splitter_state:
+            self.ui.splitter.restoreState(splitter_state)
 
     def save_state(self):
         settings = QSettings('Hypogeum', 'Harvester')
