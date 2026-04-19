@@ -136,6 +136,7 @@ class ReaderUI(QMainWindow):
         self.unsubAction = QAction("Unsubscribe", self)
         self.feedProperties = QAction('View Feed Properies', self)
         self.actionSearch_Selected_Feed = QAction('Search Current Feed', self)
+        self.markFolderReadAction = QAction("Mark All in Folder Read", self)
 
         #connect actions
         self.newSubAction.triggered.connect(self.new_sub)
@@ -144,6 +145,7 @@ class ReaderUI(QMainWindow):
         self.unsubAction.triggered.connect(self.unsubscribe_feed)
         self.feedProperties.triggered.connect(self.view_feed_properties)
         self.actionSearch_Selected_Feed.triggered.connect(self.search_single_feed)
+        self.markFolderReadAction.triggered.connect(self.mark_folder_read)
 
         # search box
         self.ui.lineSearch.textChanged.connect(self.search_feed_names)
@@ -274,7 +276,12 @@ class ReaderUI(QMainWindow):
         menu.addAction(self.ui.actionNew_Fold)
         self.ui.actionNew_Fold.setStatusTip("Create a new folder to store feeds in.")
 
-        if self.node_id not in ['folder', 'reddfile']: # we are on an individual feed
+        if self.node_id == 'folder':
+            menu.addSeparator()
+            menu.addAction(self.markFolderReadAction)
+            self.markFolderReadAction.setData(item.data(0, Qt.UserRole))
+
+        elif self.node_id not in ['folder', 'reddfile']: # we are on an individual feed
             menu.addSeparator()
             menu.addAction(self.updateFeedAction)
             self.updateFeedAction.setStatusTip("Update the current feed.")
@@ -522,6 +529,7 @@ class ReaderUI(QMainWindow):
             folder_unread = sum(feed.unread for feed in folderfeeds)
             folder_label = f'{f} ({folder_unread})' if folder_unread else f
             foldernode = QTreeWidgetItem(self.ui.treeMain, [folder_label, 'folder'])
+            foldernode.setData(0, Qt.UserRole, f)
             weight = QFont.Bold if folder_unread else QFont.Normal
             foldernode.setFont(0, QFont("Segoe UI", 10, weight=weight))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
@@ -679,6 +687,16 @@ class ReaderUI(QMainWindow):
         for feed in self.feeds.values():
             feed.unread = 0
         self.setup_tree()
+
+    def mark_folder_read(self):
+        folder_name = self.markFolderReadAction.data()
+        if not folder_name:
+            return
+        for feed in [f for f in self.feeds.values() if f.folder == folder_name]:
+            sqlitelib.mark_feed_read(feed.id, self.db_curs, self.db_conn)
+            feed.unread = 0
+            self.format_feed_tree_node(feed.treenode, feed.id)
+        self.format_folder_node(next(f.id for f in self.feeds.values() if f.folder == folder_name))
 
     def mark_older(self):
         sqlitelib.mark_old_as_read(3, self.db_curs, self.db_conn)
