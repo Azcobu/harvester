@@ -44,7 +44,6 @@ import sqlitelib
 import resources.breeze_resources
 from newsub import NewSubDialog
 import downloader
-import dbhandler
 
 class CustomWebEnginePage(QWebEnginePage):
     # Custom WebEnginePage to customize how we handle link navigation
@@ -73,7 +72,6 @@ class ReaderUI(QMainWindow):
     redd_dir = ''
     first_run_mode = True
     folderlist = []
-    db_q = Queue()
     auto_update_interval = 1800 # in seconds
 
     def __init__(self):
@@ -226,21 +224,9 @@ class ReaderUI(QMainWindow):
         #self.update_queued_feeds()
 
     def init_threads(self):
-        # reuseable thread pool for downloaders
         self.threadpool = QThreadPool()
         self.threadpool.setMaxThreadCount(10)
         self.threadpool.setExpiryTimeout(10000)
-
-        # single long-term thread for DB handler
-        self.db_thread = QThread()
-        self.db_handler = dbhandler.DBHandler(self.db_q, self.db_filename)
-        self.db_handler.moveToThread(self.db_thread)
-        self.db_thread.started.connect(self.db_handler.run)
-        self.db_thread.start()
-        self.db_handler.signals.feedposts.connect(self.display_post_data)
-
-    def db_job(self, cmd, *params):
-        self.db_q.put(dbhandler.DBJob(cmd, params))
 
     def link_hover(self, url):
         if '#anchor' in url:
@@ -570,8 +556,7 @@ class ReaderUI(QMainWindow):
     def exit_app(self):
         logging.info('Exiting app...')
         self.save_state()
-        self.db_job('SHUTDOWN')
-        self.db_conn.close() # QQQQ will be able to get rid of this when all DB work is done by handler
+        self.db_conn.close()
         self.close()
         QApplication.quit()
 
@@ -632,11 +617,10 @@ class ReaderUI(QMainWindow):
             #logging.debug(f'Tree clicked - {node_title} selected with ID {node_id}.')
             self.anchor_id = 0
             self.setWindowTitle(f'{self.version_str} - {self.db_filename} - {node_title}')
-            self.db_job('get_feed_posts', node_id)
-            # mark as read - change font, remove icon and unread count, and update DB
+            self.display_post_data(sqlitelib.get_feed_posts(node_id, self.db_curs, self.db_conn))
             self.feeds[node_id].last_read = datetime.now(timezone.utc).isoformat('T', 'seconds')
             self.feeds[node_id].unread = 0
-            self.db_job('mark_feed_read', node_id)
+            sqlitelib.mark_feed_read(node_id, self.db_curs, self.db_conn)
             self.format_feed_tree_node(self.ui.treeMain.currentItem(), node_id)
             self.jump_to_current_anchor()
 
@@ -672,13 +656,13 @@ class ReaderUI(QMainWindow):
         sqlitelib.vacuum(self.db_conn)
 
     def mark_all(self):
-        self.db_job('mark_all_read')
+        sqlitelib.mark_all_read(self.db_curs, self.db_conn)
         for feed in self.feeds.values():
             feed.unread = 0
         self.setup_tree()
 
     def mark_older(self):
-        self.db_job('mark_older_read', 3)
+        sqlitelib.mark_old_as_read(3, self.db_curs, self.db_conn)
         self.update_feeds_unread_counts()
         self.setup_tree()
 
@@ -714,7 +698,7 @@ class ReaderUI(QMainWindow):
 
     def node_finished_downloading_update_ui(self, indata):
         num_new, feed_id = indata
-        self.feeds[feed_id].unread += num_new
+        self.feeds[feed_id].unread = num_new
         self.format_feed_tree_node(self.feeds[feed_id].treenode, feed_id)
         self.update_tree_node_background(feed_id, 'finished')
 
@@ -744,7 +728,7 @@ class ReaderUI(QMainWindow):
         max_q_size = q.qsize()
 
         for num in range(min(self.threadpool.maxThreadCount(), q.qsize())):
-            worker = downloader.Worker(max_q_size, num, q, self.db_q, self.feeds, dl_feeds, dl_icons,
+            worker = downloader.Worker(max_q_size, num, q, self.feeds, dl_feeds, dl_icons,
                                        db_filename=self.db_filename)
             worker.signals.started.connect(self.node_started_downloading_update_ui)
             worker.signals.finished.connect(self.node_finished_downloading_update_ui)
@@ -753,13 +737,6 @@ class ReaderUI(QMainWindow):
 
         self.timer.setInterval(self.auto_update_interval * 1000)
 
-        '''
-        DB_thread = threading.Thread(target=rsslib.DB_writer, args=[self.db_q,
-                                     self.threadpool.maxThreadCount(),
-                                     self.db_filename, mainwin])
-        DB_thread.start()
-        '''
-
     def new_sub(self):
         # QQQQ should probably use threading for instances where other DB activity is happening
         newsubform = NewSubDialog(self)
@@ -767,7 +744,7 @@ class ReaderUI(QMainWindow):
             newfeed = newsubform.get_inputs()
             self.ui.statusbar.showMessage(f'Adding new subscription: {newfeed.title} - '
                                           f'{newfeed.rss_url} to folder {newfeed.folder}')
-            self.db_job('write_feed', newfeed)
+            sqlitelib.write_feed(newfeed, self.db_curs, self.db_conn)
             self.feeds[newfeed.id] = newfeed
             self.setup_tree()
             self.update_queued_feeds([newfeed], True, True)

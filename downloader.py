@@ -7,7 +7,6 @@ import favicon
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QRunnable
 import rsslib
 import lxml.html
-import dbhandler
 import sqlitelib
 import sqlite3
 import os
@@ -21,13 +20,12 @@ class WorkerSignals(QObject):
     icondata = pyqtSignal(tuple)
 
 class Worker(QRunnable):
-    def __init__(self, max_q_size, workernum, dl_queue, db_queue, feeds,
+    def __init__(self, max_q_size, workernum, dl_queue, feeds,
                  dl_feeds=True, dl_icons=False, dl_imgs=False, db_filename=None):
         super(Worker, self).__init__()
         self.max_q_size = max_q_size
         self.workernum = workernum
         self.dl_queue = dl_queue
-        self.db_queue = db_queue
         self.feeds = feeds
         self.dl_feeds = dl_feeds
         self.dl_icons = dl_icons
@@ -37,21 +35,13 @@ class Worker(QRunnable):
         self.feednum = 0
         logging.getLogger("urllib3").setLevel(logging.WARNING)
 
-    def _get_newest_stored_date(self, feed_id):
-        if not self.db_filename:
-            return "1970-01-01T00:00:00+00:00"
-        try:
-            conn = sqlite3.connect(self.db_filename)
-            curs = conn.cursor()
-            date = sqlitelib.get_newest_post_date(feed_id, curs, conn)
-            conn.close()
-            return date
-        except Exception as err:
-            logging.error(f'Error reading newest post date for {feed_id} - {err}')
-            return "1970-01-01T00:00:00+00:00"
-
     @pyqtSlot()
     def run(self):
+        conn = sqlite3.connect(self.db_filename) if self.db_filename else None
+        curs = conn.cursor() if conn else None
+        if conn:
+            sqlitelib.set_sqlite_pragmas(curs, conn)
+
         while not self.dl_queue.empty():
             dl_item = self.dl_queue.get()
 
@@ -60,15 +50,18 @@ class Worker(QRunnable):
             if isinstance(dl_item, rsslib.Feed):
                 self.generate_status_msg(dl_item)
                 if self.dl_feeds:
-                    self.dl_feed(dl_item)
+                    self.dl_feed(dl_item, curs, conn)
 
                 if self.dl_icons:
-                    self.dl_icon(dl_item)
+                    self.dl_icon(dl_item, curs, conn)
             else:
                 logging.debug(f'Downloading {dl_item[1]}')
                 self.save_img_to_file(dl_item)
 
             self.dl_queue.task_done()
+
+        if conn:
+            conn.close()
 
     def generate_status_msg(self, feed):
         msg = (f"{self.feednum}/{self.max_q_size}: Worker {self.workernum+1} "
@@ -76,7 +69,7 @@ class Worker(QRunnable):
         #logging.info(msg)
         self.signals.started.emit((msg, feed.id))
 
-    def dl_feed(self, feed):
+    def dl_feed(self, feed, curs, conn):
         unread_count = 0
         postlist = []
         logging.info(f'DL starting for {feed.title}')
@@ -89,8 +82,7 @@ class Worker(QRunnable):
             logging.error(f"Failed to read feed {feed.title} - {err}")
         else:
             if self.check_return_status_ok(parsedfeed, feed):
-                # update last modified time and etag, both locally and in DB
-                self.update_lastmod_etag(parsedfeed, feed)
+                self.update_lastmod_etag(parsedfeed, feed, curs, conn)
 
                 if parsedfeed.entries:
                     for p in parsedfeed.entries:
@@ -102,11 +94,8 @@ class Worker(QRunnable):
                                 newpost.strip_image_tags()
                             postlist.append(newpost)
                 if postlist:
-                    newest_stored = self._get_newest_stored_date(feed.id)
-                    unread_count = sum([1 for p in postlist
-                                        if p.date > self.feeds[feed.id].last_read
-                                        and p.date > newest_stored])
-                    self.db_queue.put(dbhandler.DBJob("write_post_list", postlist))
+                    sqlitelib.write_post_list(postlist, curs, conn)
+                    unread_count = sqlitelib.count_feed_unread(feed.id, curs, conn)
         finally:
             self.signals.finished.emit((unread_count, feed.id))
 
@@ -123,7 +112,7 @@ class Worker(QRunnable):
                   # handle 301 permanent redirects properly in future.
                 return True
 
-    def update_lastmod_etag(self, parsedfeed, feed):
+    def update_lastmod_etag(self, parsedfeed, feed, curs, conn):
         lastmod = (parsedfeed.modified if hasattr(parsedfeed, "modified")
                                        else "Thu, 1 Jan 1970 00:00:00 GMT")
         etag = parsedfeed.etag if hasattr(parsedfeed, "etag") else "0"
@@ -132,16 +121,13 @@ class Worker(QRunnable):
             or self.feeds[feed.id].etag != etag):
             self.feeds[feed.id].last_modified = lastmod
             self.feeds[feed.id].etag = etag
+            sqlitelib.update_lastmod_etag(feed.id, lastmod, etag, curs, conn)
 
-            self.db_queue.put(dbhandler.DBJob("update_lastmod_etag",
-                              [feed.id, lastmod, etag]))
-
-    def dl_icon(self, feed):
+    def dl_icon(self, feed, curs, conn):
         if not feed.favicon:
             try:
                 logging.debug(f'Getting icon for {feed.title}')
                 icons = favicon.get(feed.html_url)
-                # get icon > 0 and about 64
                 poss = [x for x in icons if x.height <= 64]
                 if poss:
                     icon = sorted(poss, key=lambda x:x.height, reverse=True)[0]
@@ -157,11 +143,8 @@ class Worker(QRunnable):
                     for chunk in response.iter_content(chunk_size=1024):
                         if chunk:
                             data += chunk
-                    self.db_queue.put(dbhandler.DBJob("update_favicon", [feed.id, data]))
+                    sqlitelib.update_favicon(feed.id, data, curs, conn)
                     self.signals.icondata.emit((feed.id, data))
-                else:
-                    #logging.error(f'{feed.title} - Response was text rather than binary.')
-                    pass
 
     def extract_base_filename(self, url):
         base = urlparse(url)
@@ -336,10 +319,10 @@ def main():
         b, "None")
 
     from queue import Queue
-    dl_q, db_q = Queue(), Queue()
+    dl_q = Queue()
     dl_q.put(testfeed)
 
-    w = Worker(5, 0, dl_q, db_q, {}, True, False, True)
+    w = Worker(5, 0, dl_q, {}, True, False, True)
     w.read_edit_img_urls(newpost)
 
 if __name__ == "__main__":

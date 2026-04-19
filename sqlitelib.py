@@ -20,11 +20,13 @@ def connect_DB_file(db_file):
         logging.error(f'Error connecting to DB file {db_file}: {err}')
         return None
     curs = conn.cursor()
+    set_sqlite_pragmas(curs, conn)
     return curs, conn
 
 def create_DB(filename):
     conn = sqlite3.connect(filename)
     curs = conn.cursor()
+    set_sqlite_pragmas(curs, conn)
 
     try:
         # Create table
@@ -433,15 +435,10 @@ def update_lastmod_etag(feed_id, last_mod, etag, curs, conn):
         logging.error(f'Error setting lastmod or etag for {feed_id} - {err}')
 
 def set_sqlite_pragmas(curs, conn):
-    # Use WAL mode (writers don't block readers):
-    #curs.execute('PRAGMA journal_mode = WAL')
-    # Use memory as temporary storage:
+    curs.execute('PRAGMA journal_mode = WAL')
     curs.execute('PRAGMA temp_store = MEMORY')
-    # Faster synchronization that still keeps the data safe:
     curs.execute('PRAGMA synchronous = 1')
-    # Increase cache size (in this case to 32MB), the default is 2MB
-    curs.execute('PRAGMA cache_size = -32000') # negative number is intentional, it's a weird API
-    # Automatically resize DB if items are deleted
+    curs.execute('PRAGMA cache_size = -32000')
     curs.execute('PRAGMA auto_vacuum = 1')
 
 def main():
