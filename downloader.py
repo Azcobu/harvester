@@ -37,7 +37,7 @@ class Worker(QRunnable):
 
     @pyqtSlot()
     def run(self):
-        conn = sqlite3.connect(self.db_filename) if self.db_filename else None
+        conn = sqlite3.connect(self.db_filename, timeout=30) if self.db_filename else None
         curs = conn.cursor() if conn else None
         if conn:
             sqlitelib.set_sqlite_pragmas(curs, conn)
