@@ -483,7 +483,7 @@ class ReaderUI(QMainWindow):
         label = f'{folder} ({folder_unread})' if folder_unread else folder
         parent_node.setText(0, label)
         weight = QFont.Bold if folder_unread else QFont.Normal
-        parent_node.setFont(0, QFont("Segoe UI", 10, weight=weight))
+        parent_node.setFont(0, QFont("", 10, weight=weight))
 
     def update_feed_icon(self, incdata):
         feed_id, icondata = incdata
@@ -501,7 +501,7 @@ class ReaderUI(QMainWindow):
             treenode.setText(0, f'{self.feeds[feed_id].title}{unread_count_str}')
             treenode.setText(1, feed_id)
             fontweight = QFont.Bold if unread_count_str else False
-            treenode.setFont(0, QFont('Segoe UI', 10, fontweight))
+            treenode.setFont(0, QFont("", 10, fontweight))
 
             default_icon = QIcon(':/icons/icons/icons8-open-book-100-2.png')
             fav = self.feeds[feed_id].favicon
@@ -531,7 +531,7 @@ class ReaderUI(QMainWindow):
             foldernode = QTreeWidgetItem(self.ui.treeMain, [folder_label, 'folder'])
             foldernode.setData(0, Qt.UserRole, f)
             weight = QFont.Bold if folder_unread else QFont.Normal
-            foldernode.setFont(0, QFont("Segoe UI", 10, weight=weight))
+            foldernode.setFont(0, QFont("", 10, weight=weight))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
             for feed in folderfeeds:
                 newnode = QTreeWidgetItem(foldernode)
@@ -547,7 +547,7 @@ class ReaderUI(QMainWindow):
         # add redd folder
         if self.redd_dir:
             foldernode = QTreeWidgetItem(self.ui.treeMain, ['ReddFiles', 'folder'])
-            foldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
+            foldernode.setFont(0, QFont("", 10, weight=QFont.Bold))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-reddit-100-2.png'))
             
             try:
@@ -558,7 +558,7 @@ class ReaderUI(QMainWindow):
 
             for rf in reddfiles:
                 newnode = QTreeWidgetItem(foldernode, [f'{rf}', 'reddfile'])
-                newnode.setFont(0, QFont("Segoe UI", 10))
+                newnode.setFont(0, QFont("", 10))
 
     def generate_filtered_tree(self, srchtext):
         logging.debug(f'Searching for feeds with {srchtext} in name...')
@@ -578,7 +578,7 @@ class ReaderUI(QMainWindow):
             for rf in reddfiles:
                 if srchtext in rf:
                     newnode = QTreeWidgetItem(self.ui.treeMain, [f'{rf}', 'reddfile'])
-                    newnode.setFont(0, QFont('Segoe UI', 10))
+                    newnode.setFont(0, QFont("", 10))
 
     def exit_app(self):
         logging.info('Exiting app...')
@@ -958,7 +958,7 @@ class ReaderUI(QMainWindow):
         results = results[startpost:endpost]
         anchor_id = startpost
 
-        self.ui.labelPage.setFont(QFont("Segoe UI", 10, weight=QFont.Bold))
+        self.ui.labelPage.setFont(QFont("", 10, weight=QFont.Bold))
         self.ui.labelPage.setText(f'Page {self.curr_page} of {self.max_page}')
 
         # QQQQ should edit post.contents to strip image data if img_loading is
@@ -1053,7 +1053,7 @@ class ReaderUI(QMainWindow):
         if ok:
             #print(str(newfolder))
             newfoldernode = QTreeWidgetItem(self.ui.treeMain, [newfolder, 'folder'])
-            newfoldernode.setFont(0, QFont("Segoe UI", 10, weight=QFont.Bold))
+            newfoldernode.setFont(0, QFont("", 10, weight=QFont.Bold))
             newfoldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
             self.folderlist.append(newfolder)
             self.folderlist = sorted(self.folderlist)

@@ -276,9 +276,9 @@ def mark_feed_read(feed_id, curs, conn):
     logging.info(f'Feed {feed_id} marked as read.')
 
 def find_date_last_read(feed_id, curs, conn):
-    query = f'SELECT `date` FROM `posts` WHERE `feed_id` = "{feed_id}" AND `flags` = 1 '\
-             'ORDER BY `date` DESC LIMIT 1;'
-    curs.execute(query)
+    query = 'SELECT `date` FROM `posts` WHERE `feed_id` = ? AND `flags` = 1 '\
+            'ORDER BY `date` DESC LIMIT 1;'
+    curs.execute(query, (feed_id,))
     lastdate = curs.fetchone()
     if lastdate:
         logging.info(f'Date for last read post for {feed_id} is {lastdate[0]}.')
