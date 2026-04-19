@@ -26,7 +26,8 @@ from datetime import datetime, timezone
 from queue import Queue
 from subprocess import Popen
 from dateutil import tz
-from dateutil.parser import *
+from dateutil.parser import parse as dateutil_parse
+import re
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
@@ -1211,7 +1212,10 @@ def convert_isodate_to_fulldate(isodate):
     # check this works on Linux - may need %-I there instead
     formatstr = '%A, %d %B %Y %#I:%M %p'
     try:
-        utctime = parse(isodate)
+        # Strip redundant trailing Z when an explicit UTC offset is already present
+        # e.g. "2026-04-19T09:00:12+00:00Z" — malformed data produced by some feeds
+        cleaned = re.sub(r'([+-]\d{2}:\d{2})Z$', r'\1', isodate)
+        utctime = dateutil_parse(cleaned, tzinfos=rsslib._TZINFOS)
         localtz = tz.tzlocal()
         localtime = utctime.astimezone(localtz)
         return localtime.strftime(formatstr)
