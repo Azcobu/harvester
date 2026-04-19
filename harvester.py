@@ -228,7 +228,8 @@ class ReaderUI(QMainWindow):
     def init_data(self):
         self._feed_errors = {}
         self._downloading_feeds = set()
-        spinner_path = path.join(path.dirname(path.abspath(__file__)), 'resources', 'loading.gif')
+        base_dir = getattr(sys, '_MEIPASS', path.dirname(path.abspath(__file__)))
+        spinner_path = path.join(base_dir, 'resources', 'loading.gif')
         self._spinner = QMovie(spinner_path)
         self._spinner.frameChanged.connect(self._update_spinner_icons)
         self._spinner.start()
