@@ -69,8 +69,8 @@ class DBHandler(QObject):
             if comm_count % 20 == 0 or self.db_q.empty():
                 try:
                     db_conn.commit()
-                except:
-                    pass
+                except Exception as err:
+                    logging.error(f'DB commit failed: {err}')
             self.db_q.task_done()
 
         logging.debug(f'DB handler thread halting.')

@@ -84,17 +84,15 @@ def text_search(srchtext, curs, conn, limit=None, datelimit=None, feed_id=None):
     srchtext = srchtext.strip()
     srchwords = srchtext.split(' ')
 
-    if len(srchwords) == 1:
-        srchtext = f'%{srchtext}%'
-        #query = f'SELECT * FROM posts WHERE `content` LIKE ? '
-        query = f'SELECT * FROM posts WHERE `content` LIKE "%{srchtext}%" '
-    else:
-        query = f'SELECT * FROM posts WHERE `content` LIKE "%{srchwords[0]}%" '
-        for word in srchwords[1:]:
-            query += f' AND `content` LIKE "%{word}%" '
+    params = []
+    conditions = [f'`content` LIKE ?' for _ in srchwords]
+    params.extend(f'%{w}%' for w in srchwords)
+
+    query = 'SELECT * FROM posts WHERE ' + ' AND '.join(conditions) + ' '
 
     if feed_id:
-        query += f'AND `feed_id` = "{feed_id}" '
+        query += 'AND `feed_id` = ? '
+        params.append(feed_id)
 
     if datelimit:
         query += f'AND `date` >= date("now", "-{datelimit} day") '
@@ -102,8 +100,7 @@ def text_search(srchtext, curs, conn, limit=None, datelimit=None, feed_id=None):
     if limit and limit > 0:
         query += f' LIMIT {limit} '
     try:
-        #curs.execute(query, (srchtext,))
-        curs.execute(query)
+        curs.execute(query, params)
     except Exception as err:
         logging.error(f'Error: {err}. Full query was {query}')
         return None
@@ -291,9 +288,9 @@ def convert_results_to_postlist(results):
     for p in results:
         try:
             newpost = rsslib.Post(*p)
+            postlist.append(newpost)
         except Exception as err:
             logging.error(f'Error converting DB result to post object - {err}')
-        postlist.append(newpost)
     return postlist
 
 def retrieve_feedlist(curs=None, conn=None):

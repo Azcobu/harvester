@@ -33,7 +33,6 @@ class Feed:
         self.tags = tags
         if tags is None:
             self.tags = []
-        self.tags = tags
         self.last_read = last_read
         self.unread = 0
         self.etag = etag

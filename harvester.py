@@ -30,12 +30,11 @@ from dateutil.parser import *
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
-                          pyqtSlot, QThread, QThreadPool, QUrl, QTimer)
+                          pyqtSlot, QThread, QThreadPool, QTimer)
 from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap
 from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
     QTreeWidgetItem, QMenu, QAction, QDialog, QLineEdit, QLabel, QMessageBox,
-    QInputDialog, QWidget, QToolBar, QHBoxLayout, QShortcut, QCheckBox, QFileDialog,
-    QShortcut)
+    QInputDialog, QWidget, QToolBar, QHBoxLayout, QShortcut, QCheckBox, QFileDialog)
 from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from ui.harvester_main import Ui_MainWindow
 from ui.harvsearch import Ui_frmSearch
@@ -374,7 +373,7 @@ class ReaderUI(QMainWindow):
             zoom = settings.value('web_zoom')
             try:
                 self.web_zoom = float(zoom) if zoom else 1.25
-            except:
+            except (ValueError, TypeError):
                 self.web_zoom = 1.25
 
     def save_state(self):
@@ -578,6 +577,7 @@ class ReaderUI(QMainWindow):
 
     def create_db(self):
         # QQQQ offer to add sample feeds to new DB
+        new_db = None
         try:
             dlg = QFileDialog.getSaveFileName(self, "Create New Database")
             if dlg:
@@ -1084,7 +1084,7 @@ class ReaderUI(QMainWindow):
 
             for k, v in dead.items():
                 page.append(f'<li>{v}</li>')
-            page.append('<//ol>')
+            page.append('</ol>')
 
             page = ''.join(page)
             self.ui.webEngine.setHtml(page)

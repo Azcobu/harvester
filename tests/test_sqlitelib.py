@@ -80,7 +80,7 @@ def test_find_date_all_feeds_last_read(db):
     assert sqlitelib.find_date_all_feeds_last_read(db.curs, db.conn) == \
         {'http://new-sun.gov': "1970-01-01T00:00:00+00:00"}
 
-def test_count_unread_posts(db):
+def test_count_unread_posts_filtered(db):
     assert sqlitelib.count_filtered_unread("New", db.curs, db.conn) == \
         {"http://new-sun.gov": 2}
     sqlitelib.mark_feed_read("http://new-sun.gov", db.curs, db.conn)
