@@ -32,7 +32,7 @@ import re
 from PyQt5 import QtGui
 from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
                           pyqtSlot, QThread, QThreadPool, QTimer)
-from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap
+from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap, QMovie
 from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
     QTreeWidgetItem, QMenu, QAction, QDialog, QLineEdit, QLabel, QMessageBox,
     QInputDialog, QWidget, QToolBar, QHBoxLayout, QShortcut, QCheckBox, QFileDialog)
@@ -226,7 +226,12 @@ class ReaderUI(QMainWindow):
             self.timer.start()
 
     def init_data(self):
-        self._feed_errors = {}  # {feed_id: (error_count, retry_after_datetime)}
+        self._feed_errors = {}
+        self._downloading_feeds = set()
+        spinner_path = path.join(path.dirname(path.abspath(__file__)), 'resources', 'loading.gif')
+        self._spinner = QMovie(spinner_path)
+        self._spinner.frameChanged.connect(self._update_spinner_icons)
+        self._spinner.start()
         self.load_db_file(self.db_filename)
         self.load_feed_data()
         self.locate_reddit_dir()
@@ -764,9 +769,20 @@ class ReaderUI(QMainWindow):
             except Exception as err:
                 pass
 
+    def _update_spinner_icons(self):
+        frame_icon = QIcon(self._spinner.currentPixmap())
+        for feed_id in self._downloading_feeds:
+            treenode = self.feeds[feed_id].treenode
+            if treenode:
+                try:
+                    treenode.setIcon(0, frame_icon)
+                except RuntimeError:
+                    pass
+
     def node_started_downloading_update_ui(self, data):
         msg, feed_id = data[0], data[1]
         self.ui.statusbar.showMessage(msg)
+        self._downloading_feeds.add(feed_id)
         self.update_tree_node_background(feed_id, 'downloading')
 
     def node_error_update_ui(self, indata):
@@ -780,6 +796,7 @@ class ReaderUI(QMainWindow):
     def node_finished_downloading_update_ui(self, indata):
         num_new, feed_id = indata
         self._feed_errors.pop(feed_id, None)
+        self._downloading_feeds.discard(feed_id)
         self.feeds[feed_id].unread = num_new
         self.format_feed_tree_node(self.feeds[feed_id].treenode, feed_id)
         self.format_folder_node(feed_id)
