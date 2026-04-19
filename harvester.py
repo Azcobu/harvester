@@ -526,7 +526,17 @@ class ReaderUI(QMainWindow):
         except RuntimeError as err: # caused by QT hiding or deleting a node
             pass
 
+    def _get_expanded_folders(self):
+        expanded = set()
+        root = self.ui.treeMain.invisibleRootItem()
+        for i in range(root.childCount()):
+            item = root.child(i)
+            if item.text(1) == 'folder' and item.isExpanded():
+                expanded.add(item.data(0, Qt.UserRole) or item.text(0))
+        return expanded
+
     def setup_tree(self):
+        expanded_folders = self._get_expanded_folders()
         self.ui.treeMain.clear()
 
         for f in self.folderlist:
@@ -543,6 +553,7 @@ class ReaderUI(QMainWindow):
                 newnode = QTreeWidgetItem(foldernode)
                 self.feeds[feed.id].treenode = newnode
                 self.format_feed_tree_node(newnode, feed.id)
+            foldernode.setExpanded(f in expanded_folders)
 
         # add folderless feeds
         for feed in [v for v in self.feeds.values() if v.folder in [None, '', 'None']]:
@@ -562,6 +573,7 @@ class ReaderUI(QMainWindow):
                 reddfiles = []
                 logging.error(f'Unable to locate reddit directory from registry: {self.redd_dir}')
 
+            foldernode.setExpanded('ReddFiles' in expanded_folders)
             for rf in reddfiles:
                 newnode = QTreeWidgetItem(foldernode, [f'{rf}', 'reddfile'])
                 newnode.setFont(0, _ui_font())
