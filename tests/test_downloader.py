@@ -1,9 +1,7 @@
-import sys
 import pytest
 from queue import Queue
 from unittest.mock import Mock, patch
 
-sys.path.append('..')
 import rsslib
 import downloader
 

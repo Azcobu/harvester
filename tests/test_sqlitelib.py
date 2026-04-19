@@ -1,10 +1,8 @@
 from datetime import date, timedelta
 from dataclasses import dataclass
-import sys
 import sqlite3
 import pytest
 
-sys.path.append("..")
 import sqlitelib
 import rsslib
 
@@ -190,3 +188,47 @@ def test_usage_report(db):
     strlen = sum(len(x.content) for x in sqlitelib.get_feed_posts("http://new-sun.gov",
                  db.curs, db.conn))
     assert sqlitelib.usage_report(db.curs, db.conn) == {'New Sun': strlen}
+
+def test_mark_all_read(db):
+    assert sqlitelib.count_all_unread(db.curs, db.conn) == {"http://new-sun.gov": 2}
+    sqlitelib.mark_all_read(db.curs, db.conn)
+    assert sqlitelib.count_all_unread(db.curs, db.conn) == {}
+
+def test_count_feed_unread(db):
+    assert sqlitelib.count_feed_unread("http://new-sun.gov", db.curs, db.conn) == 2
+    sqlitelib.mark_feed_read("http://new-sun.gov", db.curs, db.conn)
+    assert sqlitelib.count_feed_unread("http://new-sun.gov", db.curs, db.conn) == 0
+
+def test_count_feed_unread_unknown_feed(db):
+    assert sqlitelib.count_feed_unread("http://unknown.gov", db.curs, db.conn) == 0
+
+def test_get_newest_post_date_no_posts(db):
+    sqlitelib.delete_all_but_last_n("http://new-sun.gov", 0, db.curs, db.conn)
+    assert sqlitelib.get_newest_post_date("http://new-sun.gov", db.curs, db.conn) == \
+        "1970-01-01T00:00:00+00:00"
+
+def test_find_date_last_read_after_mark(db):
+    assert sqlitelib.find_date_last_read("http://new-sun.gov", db.curs, db.conn) is None
+    sqlitelib.mark_feed_read("http://new-sun.gov", db.curs, db.conn)
+    result = sqlitelib.find_date_last_read("http://new-sun.gov", db.curs, db.conn)
+    assert result is not None
+
+def test_update_feed_rss_url(db):
+    new_url = "http://new-sun.gov/new-rss"
+    sqlitelib.update_feed_rss_url("http://new-sun.gov", new_url, db.curs, db.conn)
+    fl = sqlitelib.retrieve_feedlist(db.curs, db.conn)
+    assert fl[0].rss_url == new_url
+
+def test_update_lastmod_etag(db):
+    sqlitelib.update_lastmod_etag("http://new-sun.gov", "Sat, 01 Jan 2026 00:00:00 GMT",
+                                  "etag-xyz", db.curs, db.conn)
+    fl = sqlitelib.retrieve_feedlist(db.curs, db.conn)
+    assert fl[0].last_modified == "Sat, 01 Jan 2026 00:00:00 GMT"
+    assert fl[0].etag == "etag-xyz"
+
+def test_list_feeds_over_post_count(db):
+    assert sqlitelib.list_feeds_over_post_count(1, db.curs, db.conn) == \
+        ["http://new-sun.gov"]
+    assert sqlitelib.list_feeds_over_post_count(1, db.curs, db.conn, True) == \
+        {"New Sun": 2}
+    assert sqlitelib.list_feeds_over_post_count(2, db.curs, db.conn) == []
