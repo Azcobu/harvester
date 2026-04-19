@@ -257,6 +257,13 @@ def mark_old_as_read(numdays, curs=None, conn=None):
     curs.execute(query2, (timeoffset, timeoffset))
     conn.commit()
 
+def mark_all_read(curs, conn):
+    timestamp = datetime.now(timezone.utc).isoformat('T', 'seconds')
+    curs.execute('UPDATE `posts` SET `flags` = 1')
+    curs.execute('UPDATE `feeds` SET `last_read` = ?', (timestamp,))
+    conn.commit()
+    logging.info('All feeds marked as read.')
+
 def mark_feed_read(feed_id, curs, conn):
     query = 'UPDATE `posts` SET `flags` = 1 WHERE `feed_id` = ?;'
     curs.execute(query, (feed_id,))

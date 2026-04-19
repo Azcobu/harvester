@@ -57,6 +57,8 @@ class DBHandler(QObject):
                 sqlitelib.update_favicon(feed_id, data, db_curs, db_conn)
             elif op.name == 'mark_older_read':
                 sqlitelib.mark_old_as_read(op.params[0], db_curs, db_conn)
+            elif op.name == 'mark_all_read':
+                sqlitelib.mark_all_read(db_curs, db_conn)
             elif op.name == 'write_feed':
                 sqlitelib.write_feed(op.params[0], db_curs, db_conn)
             elif op.name == 'SHUTDOWN':

@@ -164,7 +164,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionExit.triggered.connect(self.exit_app)
 
         # Edit
-        #self.ui.actionMark_All_Feeds_Read.triggered.connect(self.mark_all)
+        self.ui.actionMark_All_Feeds_Read.triggered.connect(self.mark_all)
         self.ui.actionMark_Older_As_Read.triggered.connect(self.mark_older)
         self.ui.actionFind_in_Page.triggered.connect(self.find_in_page)
 
@@ -670,6 +670,12 @@ class ReaderUI(QMainWindow):
     def maintain_DB(self):
         self.ui.statusbar.showMessage('Running DB maintenance.')
         sqlitelib.vacuum(self.db_conn)
+
+    def mark_all(self):
+        self.db_job('mark_all_read')
+        for feed in self.feeds.values():
+            feed.unread = 0
+        self.setup_tree()
 
     def mark_older(self):
         self.db_job('mark_older_read', 3)
