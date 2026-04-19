@@ -569,6 +569,7 @@ class ReaderUI(QMainWindow):
             if srchtext in feed.title.lower():
                 newnode = QTreeWidgetItem(self.ui.treeMain)
                 self.ui.treeMain.addTopLevelItem(newnode)
+                self.feeds[feed.id].treenode = newnode
                 self.format_feed_tree_node(newnode, feed.id)
 
         # add redd folder
