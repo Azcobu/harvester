@@ -215,6 +215,15 @@ def count_filtered_unread(feed_str, curs=None, conn=None):
     except Exception as err:
         print(f'Error counting unread posts for feeds - {err}')
 
+def get_newest_post_date(feed_id, curs=None, conn=None):
+    try:
+        curs.execute("SELECT MAX(`date`) FROM `posts` WHERE `feed_id` = ?", (feed_id,))
+        result = curs.fetchone()[0]
+        return result or "1970-01-01T00:00:00+00:00"
+    except Exception as err:
+        logging.error(f'Error getting newest post date for {feed_id} - {err}')
+        return "1970-01-01T00:00:00+00:00"
+
 def count_feed_unread(feed_id, curs=None, conn=None):
     try:
         query = ("SELECT COUNT(*) FROM `posts` p "

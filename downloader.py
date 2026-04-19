@@ -8,6 +8,8 @@ from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QRunnable
 import rsslib
 import lxml.html
 import dbhandler
+import sqlitelib
+import sqlite3
 import os
 from urllib.parse import urlparse, unquote
 
@@ -20,7 +22,7 @@ class WorkerSignals(QObject):
 
 class Worker(QRunnable):
     def __init__(self, max_q_size, workernum, dl_queue, db_queue, feeds,
-                 dl_feeds = True, dl_icons=False, dl_imgs=False):
+                 dl_feeds=True, dl_icons=False, dl_imgs=False, db_filename=None):
         super(Worker, self).__init__()
         self.max_q_size = max_q_size
         self.workernum = workernum
@@ -30,9 +32,23 @@ class Worker(QRunnable):
         self.dl_feeds = dl_feeds
         self.dl_icons = dl_icons
         self.dl_imgs = dl_imgs
+        self.db_filename = db_filename
         self.signals = WorkerSignals()
         self.feednum = 0
         logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+    def _get_newest_stored_date(self, feed_id):
+        if not self.db_filename:
+            return "1970-01-01T00:00:00+00:00"
+        try:
+            conn = sqlite3.connect(self.db_filename)
+            curs = conn.cursor()
+            date = sqlitelib.get_newest_post_date(feed_id, curs, conn)
+            conn.close()
+            return date
+        except Exception as err:
+            logging.error(f'Error reading newest post date for {feed_id} - {err}')
+            return "1970-01-01T00:00:00+00:00"
 
     @pyqtSlot()
     def run(self):
@@ -86,10 +102,10 @@ class Worker(QRunnable):
                                 newpost.strip_image_tags()
                             postlist.append(newpost)
                 if postlist:
-                    # QQQQ this needs work
-                    #unread_count = self.feeds[feed.id].unread
+                    newest_stored = self._get_newest_stored_date(feed.id)
                     unread_count = sum([1 for p in postlist
-                                        if p.date > self.feeds[feed.id].last_read])
+                                        if p.date > self.feeds[feed.id].last_read
+                                        and p.date > newest_stored])
                     self.db_queue.put(dbhandler.DBJob("write_post_list", postlist))
         finally:
             self.signals.finished.emit((unread_count, feed.id))

@@ -61,6 +61,11 @@ def test_get_feed_posts(db):
     assert len(sqlitelib.get_feed_posts("random_text", db.curs, db.conn)) == 0
     assert len(sqlitelib.get_feed_posts("http://new-sun.gov", db.curs, db.conn)) == 2
 
+def test_get_newest_post_date(db):
+    result = sqlitelib.get_newest_post_date("http://new-sun.gov", db.curs, db.conn)
+    assert result == f"{date.today().year}-01-01"
+    assert sqlitelib.get_newest_post_date("http://unknown.gov", db.curs, db.conn) == "1970-01-01T00:00:00+00:00"
+
 def test_count_unread_posts(db):
     assert sqlitelib.count_all_unread(db.curs, db.conn) == {"http://new-sun.gov": 2}
     sqlitelib.mark_feed_read("http://new-sun.gov", db.curs, db.conn)

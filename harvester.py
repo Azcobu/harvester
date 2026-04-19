@@ -708,8 +708,7 @@ class ReaderUI(QMainWindow):
 
     def node_finished_downloading_update_ui(self, indata):
         num_new, feed_id = indata
-        # QQQQ note not += because new_num counts all posts since last_unread every time
-        self.feeds[feed_id].unread = num_new
+        self.feeds[feed_id].unread += num_new
         self.format_feed_tree_node(self.feeds[feed_id].treenode, feed_id)
         self.update_tree_node_background(feed_id, 'finished')
 
@@ -739,7 +738,8 @@ class ReaderUI(QMainWindow):
         max_q_size = q.qsize()
 
         for num in range(min(self.threadpool.maxThreadCount(), q.qsize())):
-            worker = downloader.Worker(max_q_size, num, q, self.db_q, self.feeds, dl_feeds, dl_icons)
+            worker = downloader.Worker(max_q_size, num, q, self.db_q, self.feeds, dl_feeds, dl_icons,
+                                       db_filename=self.db_filename)
             worker.signals.started.connect(self.node_started_downloading_update_ui)
             worker.signals.finished.connect(self.node_finished_downloading_update_ui)
             worker.signals.icondata.connect(self.update_feed_icon)
