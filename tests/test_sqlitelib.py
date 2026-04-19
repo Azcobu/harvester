@@ -63,7 +63,7 @@ def test_get_feed_posts(db):
 
 def test_get_newest_post_date(db):
     result = sqlitelib.get_newest_post_date("http://new-sun.gov", db.curs, db.conn)
-    assert result == f"{date.today().year}-01-01"
+    assert result == (date.today() - timedelta(days=14)).isoformat()
     assert sqlitelib.get_newest_post_date("http://unknown.gov", db.curs, db.conn) == "1970-01-01T00:00:00+00:00"
 
 def test_count_unread_posts(db):
