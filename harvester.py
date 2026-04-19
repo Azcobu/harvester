@@ -376,16 +376,16 @@ class ReaderUI(QMainWindow):
                 self.web_zoom = float(zoom) if zoom else 1.25
             except (ValueError, TypeError):
                 self.web_zoom = 1.25
+            self._saved_expanded_folders = set(settings.value("expanded_folders") or [])
 
     def save_state(self):
-        # save program size and position on exit
-        # save treeview state at some stage?
         settings = QSettings('Hypogeum', 'Harvester')
         settings.setValue("geometry", self.saveGeometry())
         settings.setValue("windowState", self.saveState())
         settings.setValue("splitterSizes", self.ui.splitter.saveState())
         settings.setValue("db_location", self.db_filename)
         settings.setValue("redd_dir", self.redd_dir)
+        settings.setValue("expanded_folders", list(self._get_expanded_folders()))
         settings.setValue("web_zoom", self.web_zoom)
 
     def locate_db(self):
@@ -536,7 +536,8 @@ class ReaderUI(QMainWindow):
         return expanded
 
     def setup_tree(self):
-        expanded_folders = self._get_expanded_folders()
+        expanded_folders = self._get_expanded_folders() or getattr(self, '_saved_expanded_folders', set())
+        self._saved_expanded_folders = set()
         self.ui.treeMain.clear()
 
         for f in self.folderlist:
