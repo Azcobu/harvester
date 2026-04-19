@@ -5,7 +5,7 @@ import logging
 from queue import Queue
 import feedparser
 from dateutil.parser import parse as dateutil_parse
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import re
 import string
 import opml
@@ -24,11 +24,11 @@ errorlog = []
 # Ambiguous names (e.g. PST/PDT) are mapped to their North American offsets,
 # which is the correct interpretation for the vast majority of RSS feeds.
 _TZINFOS = {
-    'EST': timedelta(hours=-5),  'EDT': timedelta(hours=-4),
-    'CST': timedelta(hours=-6),  'CDT': timedelta(hours=-5),
-    'MST': timedelta(hours=-7),  'MDT': timedelta(hours=-6),
-    'PST': timedelta(hours=-8),  'PDT': timedelta(hours=-7),
-    'GMT': timedelta(0),         'UTC': timedelta(0),
+    'EST': -5*3600,  'EDT': -4*3600,
+    'CST': -6*3600,  'CDT': -5*3600,
+    'MST': -7*3600,  'MDT': -6*3600,
+    'PST': -8*3600,  'PDT': -7*3600,
+    'GMT': 0,        'UTC': 0,
 }
 
 class Feed:
