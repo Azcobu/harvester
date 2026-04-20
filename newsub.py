@@ -1,7 +1,7 @@
 # Handles subscriptions ot new feeds.
 
 import rsslib
-from PyQt5.QtWidgets import QDialog
+from PyQt6.QtWidgets import QDialog
 from ui.harvnewsub import Ui_frmNewSub
 
 class NewSubDialog(QDialog):

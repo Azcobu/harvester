@@ -29,33 +29,47 @@ from dateutil import tz
 from dateutil.parser import parse as dateutil_parse
 import re
 
-from PyQt5 import QtGui
-from PyQt5.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
+from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWebEngineCore import QWebEnginePage
+from PyQt6 import QtGui
+from PyQt6.QtCore import (Qt, QSettings, QUrl, QFile, QTextStream, pyqtSignal,
                           pyqtSlot, QThread, QThreadPool, QTimer)
-from PyQt5.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap, QMovie
-from PyQt5.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
-    QTreeWidgetItem, QMenu, QAction, QDialog, QLineEdit, QLabel, QMessageBox,
-    QInputDialog, QWidget, QToolBar, QHBoxLayout, QShortcut, QCheckBox, QFileDialog)
-from PyQt5.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+from PyQt6.QtGui import QFont, QIcon, QDesktopServices, QKeySequence, QPixmap, QMovie, QAction, QShortcut
+from PyQt6.QtWidgets import (QApplication, QTreeView, QPushButton, QMainWindow,
+    QTreeWidgetItem, QMenu, QDialog, QLineEdit, QLabel, QMessageBox,
+    QInputDialog, QWidget, QToolBar, QHBoxLayout, QCheckBox, QFileDialog)
 from ui.harvester_main import Ui_MainWindow
 from ui.harvsearch import Ui_frmSearch
 
 import rsslib
 import sqlitelib
-import resources.breeze_resources
+import resources.breeze_pyqt6
 from newsub import NewSubDialog
 import downloader
 
-def _ui_font(weight=QFont.Normal, size=10):
+def _ui_font(weight=QFont.Weight.Normal, size=10):
     font = QApplication.font()
     font.setPointSize(size)
-    font.setWeight(weight)
+    font.setWeight(weight.value)
     return font
+
+from PyQt6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem
+
+class TreeItemDelegate(QStyledItemDelegate):
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        bg = index.data(Qt.ItemDataRole.BackgroundRole)
+        if bg and isinstance(bg, QtGui.QBrush) and bg.color().isValid():
+            painter.save()
+            color = QtGui.QColor(bg.color())
+            color.setAlpha(90)
+            painter.fillRect(option.rect, color)
+            painter.restore()
 
 class CustomWebEnginePage(QWebEnginePage):
     # Custom WebEnginePage to customize how we handle link navigation
     def acceptNavigationRequest(self, url,  _type, isMainFrame):
-        if _type == QWebEnginePage.NavigationTypeLinkClicked:
+        if _type == QWebEnginePage.NavigationType.NavigationTypeLinkClicked:
             # Send the URL to the system default URL handler.
             QDesktopServices.openUrl(url)
             return False
@@ -91,7 +105,7 @@ class ReaderUI(QMainWindow):
         self.ui.splitter.addWidget(self.ui.webEngine)
 
         # hides title bar - looks nice, but annoying in practice
-        #self.setWindowFlag(Qt.FramelessWindowHint)
+        #self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
 
         self.ui.buttonNextPage = QPushButton('')
         #self.ui.buttonNextPage.setIcon(QIcon(':/icons/icons/icons8-fast-forward-100.png'))
@@ -108,7 +122,7 @@ class ReaderUI(QMainWindow):
         self.ui._search_panel = SearchPanel()
         self.ui.search_toolbar = QToolBar()
         self.ui.search_toolbar.addWidget(self.ui._search_panel)
-        self.addToolBar(Qt.BottomToolBarArea, self.ui.search_toolbar)
+        self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, self.ui.search_toolbar)
         #self.ui.statusbar.addWidget(self.ui.search_toolbar)
         self.ui.search_toolbar.hide()
         self.ui._search_panel.searched.connect(self.on_searched)
@@ -122,11 +136,12 @@ class ReaderUI(QMainWindow):
         self._restore_geometry()
 
     def initializeUI(self):
+        self.ui.treeMain.setItemDelegate(TreeItemDelegate(self.ui.treeMain))
         self.ui.treeMain.setMouseTracking(True)
         self.ui.treeMain.itemClicked.connect(self.tree_click)
         self.ui.treeMain.itemEntered.connect(self.tree_hover)
         self.ui.treeMain.itemExpanded.connect(lambda node: self.collapse_other_folders(node))
-        self.ui.treeMain.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.ui.treeMain.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.ui.treeMain.customContextMenuRequested.connect(self.tree_context_menu)
 
         logging.basicConfig(level=logging.DEBUG)
@@ -290,7 +305,7 @@ class ReaderUI(QMainWindow):
         if self.node_id == 'folder':
             menu.addSeparator()
             menu.addAction(self.markFolderReadAction)
-            self.markFolderReadAction.setData(item.data(0, Qt.UserRole))
+            self.markFolderReadAction.setData(item.data(0, Qt.ItemDataRole.UserRole))
 
         elif self.node_id not in ['folder', 'reddfile']: # we are on an individual feed
             menu.addSeparator()
@@ -407,7 +422,7 @@ class ReaderUI(QMainWindow):
     def locate_db(self):
         get_db_msg = QMessageBox(self)
         get_db_msg.setWindowTitle("Create or Locate Database")
-        get_db_msg.setIcon(QMessageBox.Critical)
+        get_db_msg.setIcon(QMessageBox.Icon.Critical)
 
         if self.first_run_mode:
             msg = ("As this is Harvester's first run, you can either create a "
@@ -415,10 +430,10 @@ class ReaderUI(QMainWindow):
         else:
             msg = 'The previous database could not be found.'
         get_db_msg.setText(msg)
-        btn_create_db = get_db_msg.addButton('Create DB', QMessageBox.AcceptRole)
-        btn_load_db = get_db_msg.addButton('Load DB', QMessageBox.AcceptRole)
-        btn_quit = get_db_msg.addButton('Quit', QMessageBox.DestructiveRole)
-        get_db_msg.exec_()
+        btn_create_db = get_db_msg.addButton('Create DB', QMessageBox.ButtonRole.AcceptRole)
+        btn_load_db = get_db_msg.addButton('Load DB', QMessageBox.ButtonRole.AcceptRole)
+        btn_quit = get_db_msg.addButton('Quit', QMessageBox.ButtonRole.DestructiveRole)
+        get_db_msg.exec()
         get_db_msg.deleteLater()
 
         if get_db_msg.clickedButton() is btn_create_db:
@@ -504,7 +519,7 @@ class ReaderUI(QMainWindow):
         folder_unread = sum(f.unread for f in self.feeds.values() if f.folder == folder)
         label = f'{folder} ({folder_unread})' if folder_unread else folder
         parent_node.setText(0, label)
-        weight = QFont.Bold if folder_unread else QFont.Normal
+        weight = QFont.Weight.Bold if folder_unread else QFont.Weight.Normal
         parent_node.setFont(0, _ui_font(weight))
 
     def update_feed_icon(self, incdata):
@@ -522,7 +537,7 @@ class ReaderUI(QMainWindow):
         try:
             treenode.setText(0, f'{self.feeds[feed_id].title}{unread_count_str}')
             treenode.setText(1, feed_id)
-            fontweight = QFont.Bold if unread_count_str else False
+            fontweight = QFont.Weight.Bold if unread_count_str else QFont.Weight.Normal
             treenode.setFont(0, _ui_font(fontweight))
 
             default_icon = QIcon(':/icons/icons/icons8-open-book-100-2.png')
@@ -548,7 +563,7 @@ class ReaderUI(QMainWindow):
         for i in range(root.childCount()):
             item = root.child(i)
             if item.text(1) == 'folder' and item.isExpanded():
-                expanded.add(item.data(0, Qt.UserRole) or item.text(0))
+                expanded.add(item.data(0, Qt.ItemDataRole.UserRole) or item.text(0))
         return expanded
 
     def setup_tree(self):
@@ -562,8 +577,8 @@ class ReaderUI(QMainWindow):
             folder_unread = sum(feed.unread for feed in folderfeeds)
             folder_label = f'{f} ({folder_unread})' if folder_unread else f
             foldernode = QTreeWidgetItem(self.ui.treeMain, [folder_label, 'folder'])
-            foldernode.setData(0, Qt.UserRole, f)
-            weight = QFont.Bold if folder_unread else QFont.Normal
+            foldernode.setData(0, Qt.ItemDataRole.UserRole, f)
+            weight = QFont.Weight.Bold if folder_unread else QFont.Weight.Normal
             foldernode.setFont(0, _ui_font(weight))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
             for feed in folderfeeds:
@@ -583,7 +598,7 @@ class ReaderUI(QMainWindow):
         # add redd folder
         if self.redd_dir:
             foldernode = QTreeWidgetItem(self.ui.treeMain, ['ReddFiles', 'folder'])
-            foldernode.setFont(0, _ui_font(QFont.Bold))
+            foldernode.setFont(0, _ui_font(QFont.Weight.Bold))
             foldernode.setIcon(0, QIcon(':/icons/icons/icons8-reddit-100-2.png'))
             
             try:
@@ -640,14 +655,14 @@ class ReaderUI(QMainWindow):
                 logging.info(f'New database {new_db} created.')
                 loadnew = QMessageBox.question(self, "Load new DB?",
                           "Would you like to load the new database?",
-                          QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-                if loadnew == QMessageBox.Yes:
+                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.Yes)
+                if loadnew == QMessageBox.StandardButton.Yes:
                     '''
                     load_sample = QMessageBox.question(self, "Import Sample Feeds?",
                                   "Would you like to add some sample feeds to the "
                                   "new database? If not, the new database will be empty.",
-                                  QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
-                    if load_sample == QMessageBox.Yes:
+                                  QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.Yes)
+                    if load_sample == QMessageBox.StandardButton.Yes:
                         #new, dupes = rsslib.import_opml_to_db(dlg[0], self.feeds,
                                       self.db_curs, self.db_conn)
                         pass
@@ -676,7 +691,7 @@ class ReaderUI(QMainWindow):
             self.handle_nextprev_buttons()
         elif node_id == 'folder':
             self.setWindowTitle(f'{self.version_str} - {self.db_filename}')
-            curr_node = self.ui.treeMain.findItems(node_title, Qt.MatchContains, 0)[0]
+            curr_node = self.ui.treeMain.findItems(node_title, Qt.MatchFlag.MatchContains, 0)[0]
             curr_state = curr_node.isExpanded()
             curr_node.setExpanded(not curr_state)
         else:
@@ -748,11 +763,11 @@ class ReaderUI(QMainWindow):
         sqlitelib.mass_delete_all_but_last_n(100, self.db_curs, self.db_conn)
 
     def find_in_page(self, srchtext=None):
-        #file_menu.addAction('&Find...', self.search_toolbar.show, shortcut=QKeySequence.Find)
+        #file_menu.addAction('&Find...', self.search_toolbar.show, shortcut=QKeySequence.StandardKey.Find)
         #self.ui.find_in_page = QLineEdit()
         #self.ui.statusbar.addWidget(self.ui.find_in_page)
         #self.ui.find_in_page.setFocus()
-        #flags = QWebEnginePage.FindFlags(0)
+        #flags = QWebEnginePage.FindFlag(0)
         #self.ui.webEngine.findText("new", flags)
         self.ui.search_toolbar.show()
 
@@ -761,10 +776,10 @@ class ReaderUI(QMainWindow):
         if treenode:
             try:
                 if mode == 'downloading':
-                    treenode.setBackground(0, QtGui.QColor(16, 16, 128, 255))
-                    #treenode.setBackground(0, QtGui.QColor(61, 174, 233, 255))
+                    treenode.setBackground(0, QtGui.QBrush(QtGui.QColor(100, 140, 200, 255)))
+                    #treenode.setBackground(0, QtGui.QBrush(QtGui.QColor(61, 174, 233, 255)))
                 elif mode == 'finished':
-                    treenode.setData(0, Qt.BackgroundRole, None)
+                    treenode.setData(0, Qt.ItemDataRole.BackgroundRole, None)
             except Exception as err:
                 pass
 
@@ -963,8 +978,8 @@ class ReaderUI(QMainWindow):
         if self.node_id not in ['folder', 'reddfile']:
             confirm = QMessageBox.question(self, "Unsubscribe from feed?",
                      "This will unsubscribe you from the feed and delete all saved posts. "
-                     "Are you sure?", QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if confirm == QMessageBox.Yes:
+                     "Are you sure?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
+            if confirm == QMessageBox.StandardButton.Yes:
                 res = sqlitelib.delete_feed(self.node_id, self.db_curs, self.db_conn)
                 if res:
                     logging.info(f'Unsubscribed from {self.feeds[self.node_id].title}.')
@@ -1009,7 +1024,7 @@ class ReaderUI(QMainWindow):
         results = results[startpost:endpost]
         anchor_id = startpost
 
-        self.ui.labelPage.setFont(_ui_font(QFont.Bold))
+        self.ui.labelPage.setFont(_ui_font(QFont.Weight.Bold))
         self.ui.labelPage.setText(f'Page {self.curr_page} of {self.max_page}')
 
         # QQQQ should edit post.contents to strip image data if img_loading is
@@ -1104,7 +1119,7 @@ class ReaderUI(QMainWindow):
         if ok:
             #print(str(newfolder))
             newfoldernode = QTreeWidgetItem(self.ui.treeMain, [newfolder, 'folder'])
-            newfoldernode.setFont(0, _ui_font(QFont.Bold))
+            newfoldernode.setFont(0, _ui_font(QFont.Weight.Bold))
             newfoldernode.setIcon(0, QIcon(':/icons/icons/icons8-folder-100.png'))
             self.folderlist.append(newfolder)
             self.folderlist = sorted(self.folderlist)
@@ -1186,7 +1201,7 @@ class ReaderUI(QMainWindow):
             feed = self.feeds[node_id]
             props = QMessageBox(self)
             props.setWindowTitle(f"Feed Properties")
-            props.setTextFormat(Qt.RichText)
+            props.setTextFormat(Qt.TextFormat.RichText)
             pmap = QPixmap()
             pmap.loadFromData(self.feeds[feed.id].favicon)
             props.setIconPixmap(pmap)
@@ -1197,16 +1212,16 @@ class ReaderUI(QMainWindow):
                           f'<li>Home Page: <a href="{feed.html_url}" style="color: deepskyblue">{feed.html_url}</a>'
                           f'<li>Last Read: {feed.last_read}'
                           '</ul>')
-            props.setStandardButtons(QMessageBox.Ok)
-            props.setDefaultButton(QMessageBox.Ok)
-            props.exec_()
+            props.setStandardButtons(QMessageBox.StandardButton.Ok)
+            props.setDefaultButton(QMessageBox.StandardButton.Ok)
+            props.exec()
             props.deleteLater()
 
     def about_harv(self):
         #Information page for the program
         about = QMessageBox(self)
         about.setWindowTitle("About Harvester")
-        about.setTextFormat(Qt.RichText)
+        about.setTextFormat(Qt.TextFormat.RichText)
         about.setIconPixmap(QPixmap(':/icons/icons/icons8-combine-harvester-100-2.png'))
         about.setText('<h4>Harvester 0.1</h4>A cross-platform RSS reader.'
                       '<p style="margin-bottom: -20px;">Credits:'
@@ -1214,9 +1229,9 @@ class ReaderUI(QMainWindow):
                       '<li>Icons from <a href="https://icons8.com">Icons8</a>'
                       '<li>Dark theme is <a href="https://github.com/ColinDuquesnoy/'
                       'QDarkStyleSheet">QDarkStylesheet</a></ul>')
-        about.setStandardButtons(QMessageBox.Ok)
-        about.setDefaultButton(QMessageBox.Ok)
-        about.exec_()
+        about.setStandardButtons(QMessageBox.StandardButton.Ok)
+        about.setDefaultButton(QMessageBox.StandardButton.Ok)
+        about.exec()
         about.deleteLater()
 
 #=========================================================================
@@ -1282,19 +1297,19 @@ class SearchPanel(QWidget):
         self.search_le.returnPressed.connect(self.update_searching)
         self.closed.connect(self.search_le.clear)
 
-        QShortcut(QKeySequence.FindNext, self, activated=next_button.animateClick)
-        QShortcut(QKeySequence.FindPrevious, self, activated=prev_button.animateClick)
-        QShortcut(QKeySequence(Qt.Key_Escape), self.search_le, activated=self.closed)
+        QShortcut(QKeySequence.StandardKey.FindNext, self, activated=next_button.animateClick)
+        QShortcut(QKeySequence.StandardKey.FindPrevious, self, activated=prev_button.animateClick)
+        QShortcut(QKeySequence(Qt.Key.Key_Escape), self.search_le, activated=self.closed)
 
     @pyqtSlot()
     def on_preview_find(self):
-        self.update_searching(QWebEnginePage.FindBackward)
+        self.update_searching(QWebEnginePage.FindFlag.FindBackward)
 
     @pyqtSlot()
-    def update_searching(self, direction=QWebEnginePage.FindFlag()):
+    def update_searching(self, direction=QWebEnginePage.FindFlag(0)):
         flag = direction
         if self.case_button.isChecked():
-            flag |= QWebEnginePage.FindCaseSensitively
+            flag |= QWebEnginePage.FindFlag.FindCaseSensitively
         self.searched.emit(self.search_le.text(), flag)
 
     def showEvent(self, event):
@@ -1329,7 +1344,7 @@ def convert_isodate_to_fulldate(isodate):
 
 def load_css_file():
     f = QFile(":/resources/pagestyle.css")
-    if f.open(QFile.ReadOnly | QFile.Text):
+    if f.open(QFile.OpenModeFlag.ReadOnly | QFile.OpenModeFlag.Text):
         return QTextStream(f).readAll()
     logging.error('Unable to load pagestyle.css from resources.')
 
@@ -1345,13 +1360,13 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
 
     # set stylesheet
-    file = QFile(":/dark/stylesheet.qss")
-    file.open(QFile.ReadOnly | QFile.Text)
-    stream = QTextStream(file)
-    app.setStyleSheet(stream.readAll())
+    # file = QFile(":/dark/stylesheet.qss")
+    # file.open(QFile.OpenModeFlag.ReadOnly | QFile.OpenModeFlag.Text)
+    # stream = QTextStream(file)
+    # app.setStyleSheet(stream.readAll())
 
     sys._excepthook = sys.excepthook
     sys.excepthook = exception_hook
 
     Reader = ReaderUI()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

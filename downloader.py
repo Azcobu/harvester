@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 import feedparser
 import favicon
-from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject, QRunnable
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, QObject, QRunnable
 import rsslib
 import lxml.html
 import sqlitelib
