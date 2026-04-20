@@ -28,7 +28,7 @@
     <file>icons/harvester.png</file>
   </qresource>
   <qresource prefix="resources">
-    <file>loading.gif</file>
     <file>pagestyle.css</file>
+    <file>loading.gif</file>
   </qresource>
 </RCC>

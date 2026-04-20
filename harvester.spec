@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['harvester.ico'],
+    icon=['~/home/blw/code/harvester/resources/icons/harvester.ico'],
 )
