@@ -19,6 +19,7 @@ if environ.get("XDG_SESSION_TYPE") == "wayland":
 
 import sys
 import logging
+import webbrowser
 import socket
 import urllib.request
 from functools import partial
@@ -52,6 +53,19 @@ def _ui_font(weight=QFont.Weight.Normal, size=11):
     font.setWeight(weight.value)
     return font
 
+def _open_url_externally(url):
+    import subprocess, os as _os
+    env = _os.environ.copy()
+    # PyInstaller overrides LD_LIBRARY_PATH; restore original so xdg-open works
+    orig = env.get('LD_LIBRARY_PATH_ORIG')
+    if orig is not None:
+        env['LD_LIBRARY_PATH'] = orig
+    else:
+        env.pop('LD_LIBRARY_PATH', None)
+    try:
+        subprocess.Popen(['xdg-open', url], env=env)
+    except FileNotFoundError:
+        webbrowser.open(url)
 
 class CustomWebEnginePage(QWebEnginePage):
     def __init__(self, parent=None):
@@ -61,7 +75,7 @@ class CustomWebEnginePage(QWebEnginePage):
     def _on_navigation_requested(self, request):
         from PyQt6.QtWebEngineCore import QWebEngineNavigationRequest
         if request.navigationType() == QWebEngineNavigationRequest.NavigationType.LinkClickedNavigation:
-            QDesktopServices.openUrl(request.url())
+            _open_url_externally(request.url().toString())
             request.reject()
 
 class ReaderUI(QMainWindow):
@@ -110,6 +124,7 @@ class ReaderUI(QMainWindow):
 
         self.ui._search_panel = SearchPanel()
         self.ui.search_toolbar = QToolBar()
+        self.ui.search_toolbar.setObjectName("search_toolbar")
         self.ui.search_toolbar.addWidget(self.ui._search_panel)
         self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, self.ui.search_toolbar)
         #self.ui.statusbar.addWidget(self.ui.search_toolbar)
