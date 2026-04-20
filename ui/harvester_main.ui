@@ -14,7 +14,7 @@
    <string>Harvester</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="harvester.qrc">
+   <iconset resource="../resources/harvester.qrc">
     <normaloff>:/icons/icons/icons8-combine-harvester-100-2.png</normaloff>:/icons/icons/icons8-combine-harvester-100-2.png</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
@@ -87,7 +87,7 @@
      <x>0</x>
      <y>0</y>
      <width>796</width>
-     <height>26</height>
+     <height>34</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -159,7 +159,7 @@
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionSubscribe">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-add-file-100.png</normaloff>:/icons/icons/icons8-add-file-100.png</iconset>
    </property>
    <property name="text">
@@ -176,7 +176,7 @@
   </action>
   <action name="actionNew_Fold">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-folder-100.png</normaloff>:/icons/icons/icons8-folder-100.png</iconset>
    </property>
    <property name="text">
@@ -188,7 +188,7 @@
   </action>
   <action name="actionImport_Feeds">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-file-100-5.png</normaloff>:/icons/icons/icons8-file-100-5.png</iconset>
    </property>
    <property name="text">
@@ -200,7 +200,7 @@
   </action>
   <action name="actionExport_Feeds">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-file-100-4.png</normaloff>:/icons/icons/icons8-file-100-4.png</iconset>
    </property>
    <property name="text">
@@ -212,7 +212,7 @@
   </action>
   <action name="actionDatabase_Maintenance">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset>
      <normaloff>:/icons/icons/icons8-database-100.png</normaloff>:/icons/icons/icons8-database-100.png</iconset>
    </property>
    <property name="text">
@@ -224,7 +224,7 @@
   </action>
   <action name="actionExit">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-door-100.png</normaloff>:/icons/icons/icons8-door-100.png</iconset>
    </property>
    <property name="text">
@@ -255,7 +255,7 @@
   </action>
   <action name="actionFind_in_Page">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-binocular-100.png</normaloff>:/icons/icons/icons8-binocular-100.png</iconset>
    </property>
    <property name="text">
@@ -270,7 +270,7 @@
   </action>
   <action name="actionUpdate_All_Feeds">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-antenna-100-2.png</normaloff>:/icons/icons/icons8-antenna-100-2.png</iconset>
    </property>
    <property name="text">
@@ -282,7 +282,7 @@
   </action>
   <action name="actionUpdate_Current_Feed">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-antenna-100.png</normaloff>:/icons/icons/icons8-antenna-100.png</iconset>
    </property>
    <property name="text">
@@ -294,7 +294,7 @@
   </action>
   <action name="actionSearch_Feeds">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-magnifying-glass-100.png</normaloff>:/icons/icons/icons8-magnifying-glass-100.png</iconset>
    </property>
    <property name="text">
@@ -319,7 +319,7 @@
   </action>
   <action name="actionOptions">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-settings-100.png</normaloff>:/icons/icons/icons8-settings-100.png</iconset>
    </property>
    <property name="text">
@@ -376,7 +376,7 @@
   </action>
   <action name="actionUpdate_Reddit">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-reddit-100-2.png</normaloff>:/icons/icons/icons8-reddit-100-2.png</iconset>
    </property>
    <property name="text">
@@ -396,7 +396,7 @@
   </action>
   <action name="actionMost_Recent">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-news-100-3.png</normaloff>:/icons/icons/icons8-news-100-3.png</iconset>
    </property>
    <property name="text">
@@ -408,7 +408,7 @@
   </action>
   <action name="actionIncrease_Text_Size">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset>
      <normaloff>:/icons/icons/icons8-zoom-in-100.png</normaloff>:/icons/icons/icons8-zoom-in-100.png</iconset>
    </property>
    <property name="text">
@@ -420,7 +420,7 @@
   </action>
   <action name="actionDecrease_Text_Size">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset>
      <normaloff>:/icons/icons/icons8-zoom-out-100.png</normaloff>:/icons/icons/icons8-zoom-out-100.png</iconset>
    </property>
    <property name="text">
@@ -440,7 +440,7 @@
   </action>
   <action name="actionCreate_Database">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-database-100-2.png</normaloff>:/icons/icons/icons8-database-100-2.png</iconset>
    </property>
    <property name="text">
@@ -452,7 +452,7 @@
   </action>
   <action name="actionDelete_Older_Posts">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-broom-100.png</normaloff>:/icons/icons/icons8-broom-100.png</iconset>
    </property>
    <property name="text">
@@ -472,7 +472,7 @@
   </action>
   <action name="actionUsage_Report">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-report-100-2.png</normaloff>:/icons/icons/icons8-report-100-2.png</iconset>
    </property>
    <property name="text">
@@ -484,7 +484,7 @@
   </action>
   <action name="actionAbout_Harvester">
    <property name="icon">
-    <iconset resource="harvester.qrc">
+    <iconset resource="../resources/harvester.qrc">
      <normaloff>:/icons/icons/icons8-combine-harvester-100-2.png</normaloff>:/icons/icons/icons8-combine-harvester-100-2.png</iconset>
    </property>
    <property name="text">
@@ -503,7 +503,7 @@
   </action>
  </widget>
  <resources>
-  <include location="harvester.qrc"/>
+  <include location="../resources/harvester.qrc"/>
  </resources>
  <connections/>
 </ui>
