@@ -47,24 +47,12 @@ import resources.breeze_pyqt6
 from newsub import NewSubDialog
 import downloader
 
-def _ui_font(weight=QFont.Weight.Normal, size=10):
+def _ui_font(weight=QFont.Weight.Normal, size=11):
     font = QApplication.font()
     font.setPointSize(size)
     font.setWeight(weight.value)
     return font
 
-from PyQt6.QtWidgets import QStyledItemDelegate, QStyleOptionViewItem
-
-class TreeItemDelegate(QStyledItemDelegate):
-    def paint(self, painter, option, index):
-        super().paint(painter, option, index)
-        bg = index.data(Qt.ItemDataRole.BackgroundRole)
-        if bg and isinstance(bg, QtGui.QBrush) and bg.color().isValid():
-            painter.save()
-            color = QtGui.QColor(bg.color())
-            color.setAlpha(90)
-            painter.fillRect(option.rect, color)
-            painter.restore()
 
 class CustomWebEnginePage(QWebEnginePage):
     # Custom WebEnginePage to customize how we handle link navigation
@@ -136,7 +124,16 @@ class ReaderUI(QMainWindow):
         self._restore_geometry()
 
     def initializeUI(self):
-        self.ui.treeMain.setItemDelegate(TreeItemDelegate(self.ui.treeMain))
+        self.ui.treeMain.verticalScrollBar().setStyleSheet("""
+            QScrollBar { width: 8px; background: transparent; }
+            QScrollBar::handle { background: #3daee9; border-radius: 4px; min-height: 20px; }
+            QScrollBar::add-line, QScrollBar::sub-line { height: 0px; }
+        """)
+        palette = self.ui.treeMain.palette()
+        palette.setColor(QtGui.QPalette.ColorRole.Highlight, QtGui.QColor(61, 174, 233))
+        palette.setColor(QtGui.QPalette.ColorRole.HighlightedText, QtGui.QColor(0, 0, 0))
+        self.ui.treeMain.setPalette(palette)
+        
         self.ui.treeMain.setMouseTracking(True)
         self.ui.treeMain.itemClicked.connect(self.tree_click)
         self.ui.treeMain.itemEntered.connect(self.tree_hover)
@@ -200,6 +197,7 @@ class ReaderUI(QMainWindow):
         self.ui.actionUpdate_All_Feeds.triggered.connect(
             lambda: self.update_queued_feeds(None, True, False))
         self.ui.actionUpdate_Current_Feed.triggered.connect(self.update_single_feed)
+        self.ui.actionUpdate_Current_Feed.setEnabled(False)
         self.ui.actionUpdate_Reddit.triggered.connect(self.update_reddit)
         self.ui.actionSearch_Feeds.triggered.connect(self.search_feeds)
         self.ui.actionSearch_Selected_Feed.triggered.connect(self.search_single_feed)
@@ -681,6 +679,9 @@ class ReaderUI(QMainWindow):
         self.curr_page = 1
         self.handle_nextprev_buttons()
 
+        is_feed = node_id not in ('folder', 'reddfile', '')
+        self.ui.actionUpdate_Current_Feed.setEnabled(is_feed)
+
         if node_id == 'reddfile':
             reddurl = path.join(self.redd_dir, node_title)
             self.setWindowTitle(f'{self.version_str} - {reddurl}')
@@ -776,10 +777,11 @@ class ReaderUI(QMainWindow):
         if treenode:
             try:
                 if mode == 'downloading':
-                    treenode.setBackground(0, QtGui.QBrush(QtGui.QColor(100, 140, 200, 255)))
-                    #treenode.setBackground(0, QtGui.QBrush(QtGui.QColor(61, 174, 233, 255)))
+                    treenode.setBackground(0, QtGui.QBrush(QtGui.QColor(61, 174, 233, 255)))
+                    treenode.setForeground(0, QtGui.QBrush(QtGui.QColor(0, 0, 0)))
                 elif mode == 'finished':
                     treenode.setData(0, Qt.ItemDataRole.BackgroundRole, None)
+                    treenode.setData(0, Qt.ItemDataRole.ForegroundRole, None)
             except Exception as err:
                 pass
 
