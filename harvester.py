@@ -54,13 +54,15 @@ def _ui_font(weight=QFont.Weight.Normal, size=11):
 
 
 class CustomWebEnginePage(QWebEnginePage):
-    # Custom WebEnginePage to customize how we handle link navigation
-    def acceptNavigationRequest(self, url,  _type, isMainFrame):
-        if _type == QWebEnginePage.NavigationType.NavigationTypeLinkClicked:
-            # Send the URL to the system default URL handler.
-            QDesktopServices.openUrl(url)
-            return False
-        return super().acceptNavigationRequest(url,  _type, isMainFrame)
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.navigationRequested.connect(self._on_navigation_requested)
+
+    def _on_navigation_requested(self, request):
+        from PyQt6.QtWebEngineCore import QWebEngineNavigationRequest
+        if request.navigationType() == QWebEngineNavigationRequest.NavigationType.LinkClickedNavigation:
+            QDesktopServices.openUrl(request.url())
+            request.reject()
 
 class ReaderUI(QMainWindow):
     version_str = 'Harvester 0.2'
