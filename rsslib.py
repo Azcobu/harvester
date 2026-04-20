@@ -12,7 +12,7 @@ import opml
 import sqlitelib
 import time
 import pytz
-from PyQt5 import QtGui
+from PyQt6 import QtGui
 from urllib.parse import urljoin
 
 from lxml import etree, html
