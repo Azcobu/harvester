@@ -43,7 +43,6 @@ from ui.harvsearch import Ui_frmSearch
 
 import rsslib
 import sqlitelib
-import resources.breeze_pyqt6
 from newsub import NewSubDialog
 import downloader
 
@@ -64,7 +63,7 @@ class CustomWebEnginePage(QWebEnginePage):
         return super().acceptNavigationRequest(url,  _type, isMainFrame)
 
 class ReaderUI(QMainWindow):
-    version_str = 'Harvester 0.1'
+    version_str = 'Harvester 0.2'
     console_output = True
     db_filename = None
     feeds = {}
@@ -336,7 +335,7 @@ class ReaderUI(QMainWindow):
                 no_folder = move_folder.addAction('None (remove from current folder)')
                 no_folder.triggered.connect(partial(self.move_to_folder, curr_feed, None))
 
-        menu.exec_(self.ui.treeMain.mapToGlobal(position))
+        menu.exec(self.ui.treeMain.mapToGlobal(position))
 
     def move_to_folder(self, feed, folder_name):
         logging.debug(f'Moving feed {feed.id} to {folder_name} folder.')
@@ -1225,12 +1224,10 @@ class ReaderUI(QMainWindow):
         about.setWindowTitle("About Harvester")
         about.setTextFormat(Qt.TextFormat.RichText)
         about.setIconPixmap(QPixmap(':/icons/icons/icons8-combine-harvester-100-2.png'))
-        about.setText('<h4>Harvester 0.1</h4>A cross-platform RSS reader.'
+        about.setText('<h4>Harvester 0.2</h4>A cross-platform RSS reader.'
                       '<p style="margin-bottom: -20px;">Credits:'
                       '<ul style="margin-left: -30px; margin-top: -20px;">'
-                      '<li>Icons from <a href="https://icons8.com">Icons8</a>'
-                      '<li>Dark theme is <a href="https://github.com/ColinDuquesnoy/'
-                      'QDarkStyleSheet">QDarkStylesheet</a></ul>')
+                      '<li>Icons from <a href="https://icons8.com">Icons8</a></ul>')
         about.setStandardButtons(QMessageBox.StandardButton.Ok)
         about.setDefaultButton(QMessageBox.StandardButton.Ok)
         about.exec()
