@@ -97,6 +97,7 @@ class ReaderUI(QMainWindow):
     first_run_mode = True
     folderlist = []
     auto_update_interval = 1800 # in seconds
+    _last_update_time = None
 
     def __init__(self):
         super(ReaderUI, self).__init__()
@@ -219,6 +220,8 @@ class ReaderUI(QMainWindow):
         self.ui.actionSearch_Selected_Feed.triggered.connect(self.search_single_feed)
         self.ui.actionUsage_Report.triggered.connect(self.usage_report)
         self.ui.actionDead_Feeds_Report.triggered.connect(self.dead_feeds_report)
+        self.ui.menuTools.aboutToShow.connect(
+            lambda: self.ui.actionUpdate_All_Feeds.setText(self._update_all_feeds_label()))
         #options
         self.ui.actionAbout_Harvester.triggered.connect(self.about_harv)
 
@@ -850,6 +853,12 @@ class ReaderUI(QMainWindow):
             q.put(feed)
         return q
 
+    def _update_all_feeds_label(self):
+        if self._last_update_time is None:
+            return 'Update All Feeds'
+        mins = int((datetime.now(timezone.utc) - self._last_update_time).total_seconds() // 60)
+        return f'Update All Feeds (last {mins} min{"s" if mins != 1 else ""} ago)'
+
     def update_queued_feeds(self, specified_feeds=None, dl_feeds=True, dl_icons=False,
                             dl_imgs=False):
         if not is_internet_on():
@@ -874,6 +883,7 @@ class ReaderUI(QMainWindow):
             self.threadpool.start(worker)
 
         self.timer.setInterval(self.auto_update_interval * 1000)
+        self._last_update_time = datetime.now(timezone.utc)
 
     def new_sub(self):
         # QQQQ should probably use threading for instances where other DB activity is happening
